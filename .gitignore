@@ -1,6 +1,11 @@
 # Node / frontend
 frontend/node_modules/
 frontend/dist/
+# Ignore all images in ArtBench
+datasets/Artbench/images/
+
+# Ignore all images in WikiArt (all subfolders)
+datasets/Wikiart/**/
 
 # Python / backend
 __pycache__/
