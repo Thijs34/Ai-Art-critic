@@ -1,0 +1,408 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AI Art Critic - Data Preparation Report</title>
+  <link rel="preconnect" href="https://cdnjs.cloudflare.com" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.10.0/styles/github.min.css" />
+  <style>
+    :root {
+      --bg: #f3f6fb;
+      --panel: #ffffff;
+      --text: #1f2937;
+      --muted: #4b5563;
+      --line: #dbe3ef;
+      --accent: #1d4ed8;
+      --soft: #eff6ff;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: "Segoe UI", Roboto, Arial, sans-serif;
+      color: var(--text);
+      background: var(--bg);
+      line-height: 1.6;
+    }
+
+    .container {
+      max-width: 980px;
+      margin: 24px auto;
+      padding: 0 16px 24px;
+    }
+
+    .hero {
+      background: linear-gradient(145deg, #eaf2ff, #ffffff);
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 18px;
+      margin-bottom: 14px;
+    }
+
+    h1, h2, h3 { line-height: 1.25; margin-top: 0; }
+    h1 { font-size: 1.75rem; margin-bottom: 8px; }
+    h2 { font-size: 1.22rem; margin-bottom: 8px; color: #0f2f7a; }
+    h3 { font-size: 1.02rem; margin-bottom: 6px; color: #1d4ed8; }
+
+    p { margin: 7px 0; }
+
+    .panel {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 15px;
+      margin-top: 12px;
+    }
+
+    .flow {
+      margin: 8px 0 0 0;
+      padding: 0;
+      list-style: none;
+      counter-reset: step;
+    }
+
+    .flow li {
+      counter-increment: step;
+      background: #fafcff;
+      border: 1px solid #e4eaf5;
+      border-radius: 10px;
+      padding: 10px 12px;
+      margin: 8px 0;
+      position: relative;
+      padding-left: 42px;
+    }
+
+    .flow li::before {
+      content: counter(step);
+      position: absolute;
+      left: 12px;
+      top: 10px;
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      background: #dbeafe;
+      color: #1e3a8a;
+      font-weight: 700;
+      display: grid;
+      place-items: center;
+      font-size: 0.85rem;
+    }
+
+    ul { margin: 8px 0 0 18px; }
+    li { margin: 4px 0; }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 10px;
+      font-size: 0.96rem;
+    }
+
+    th, td {
+      border: 1px solid #dbe3ef;
+      padding: 8px;
+      vertical-align: top;
+      text-align: left;
+    }
+
+    th { background: #f1f5ff; }
+
+    .code-box {
+      border: 1px solid #dbe3ef;
+      border-radius: 10px;
+      overflow: hidden;
+      margin-top: 10px;
+      background: #ffffff;
+    }
+
+    .code-title {
+      background: #f6f9ff;
+      border-bottom: 1px solid #dbe3ef;
+      color: #1f3e8a;
+      font-weight: 600;
+      font-size: 0.86rem;
+      padding: 6px 10px;
+    }
+
+    pre {
+      margin: 0;
+      padding: 12px;
+      font-size: 0.86rem;
+      line-height: 1.45;
+      white-space: pre-wrap;
+      word-break: break-word;
+      overflow-wrap: anywhere;
+      overflow-x: visible;
+    }
+
+    pre code {
+      white-space: pre-wrap;
+      word-break: break-word;
+      overflow-wrap: anywhere;
+      overflow-x: visible;
+      font-family: Consolas, "Courier New", monospace;
+    }
+
+    .note {
+      background: #f7f9fc;
+      border: 1px dashed #cfd8e6;
+      border-radius: 8px;
+      padding: 10px;
+      color: var(--muted);
+      margin-top: 10px;
+    }
+
+    @media print {
+      @page { margin: 12mm; }
+      body { background: #fff; }
+      .container { max-width: 100%; margin: 0; padding: 0; }
+      .hero, .panel {
+        box-shadow: none;
+        break-inside: auto;
+        page-break-inside: auto;
+        margin-top: 6px;
+        margin-bottom: 6px;
+        padding: 10px 12px;
+      }
+      .hero { margin-bottom: 8px; }
+      h1 { font-size: 1.5rem; margin-bottom: 6px; }
+      h2 { font-size: 1.08rem; margin-bottom: 6px; }
+      h3 { font-size: 0.96rem; margin-bottom: 5px; }
+      p { margin: 4px 0; }
+      ul, .flow { margin-top: 4px; }
+      .flow li {
+        margin: 5px 0;
+        padding-top: 7px;
+        padding-bottom: 7px;
+      }
+      table { margin-top: 6px; font-size: 0.9rem; }
+      th, td { padding: 6px; }
+      .code-box { margin-top: 6px; }
+      pre { padding: 8px; font-size: 0.8rem; line-height: 1.35; }
+      .note { margin-top: 6px; padding: 7px; }
+      a { color: inherit; text-decoration: none; }
+    }
+  </style>
+</head>
+<body>
+  <main class="container">
+    <section class="hero">
+      <h1>AI Art Critic - Data Preparation</h1>
+      <p>
+        This report explains how the data was prepared before training the model.
+        The goal was to make sure the data was correct, clean, and ready to use.
+      </p>
+      <p>
+        The model learns to predict <strong>art styles</strong> from images
+        (for example Impressionism, Cubism, Realism, Baroque, and other styles in the dataset).
+      </p>
+      <p>
+        The steps below are shown in the same order they were done.
+        For each step, it shows what was done and what the result was.
+      </p>
+    </section>
+
+    <section class="panel">
+      <h2>1) Quick Map: What was done</h2>
+      <table>
+        <thead>
+          <tr>
+            <th>Workstream</th>
+            <th>Main data preparation work</th>
+            <th>Output / result</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Local image dataset build</td>
+            <td>Loaded the ArtBench file, checked needed columns, downloaded images into local style folders, and saved cleaned CSV files.</td>
+            <td>Local image folders, a full updated CSV, a simple training CSV, and a failure CSV.</td>
+          </tr>
+          <tr>
+            <td>Cross-dataset path linking</td>
+            <td>Matched ArtEmis painting names to real WikiArt image paths by scanning image files and matching names.</td>
+            <td>A new CSV with added painting path columns.</td>
+          </tr>
+          <tr>
+            <td>Classification input preparation</td>
+            <td>Loaded train/validation CSVs, mapped labels to style names, removed broken rows, and applied image preprocessing settings.</td>
+            <td>Clean train/validation data ready for training.</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section class="panel">
+      <h2>2) Step-by-step: ArtBench local preparation</h2>
+      <ol class="flow">
+        <li>Opened the main CSV file and first checked if all required columns were there.</li>
+        <li>Cleaned folder and file names so files could be saved safely on disk.</li>
+        <li>Downloaded images with retry support and skipped files that were already downloaded.</li>
+        <li>Saved three outputs: full local CSV, simple training CSV, and a failures CSV.</li>
+      </ol>
+
+      <div class="code-box">
+        <div class="code-title">ArtBench - schema check + output writing</div>
+        <pre><code class="language-python">df = pd.read_csv(CSV_PATH)
+required_columns = {"name", "url", "label"}
+missing = required_columns - set(df.columns)
+if missing:
+    raise ValueError(f"Missing required columns: {missing}")
+
+result_df = pd.DataFrame(results).sort_values("index")
+
+# Keep original URL, add local path, and save outputs
+df_out = df.copy()
+df_out["source_url"] = df_out["url"]
+df_out["url"] = result_df["local_path"].values
+df_out["download_ok"] = result_df["ok"].values
+df_out["download_error"] = result_df["error"].values
+
+df_out.to_csv(OUTPUT_CSV, index=False)
+failures = df_out[~df_out["download_ok"]].copy()
+if len(failures) > 0:
+    failures.to_csv(FAILURES_CSV, index=False)</code></pre>
+      </div>
+    </section>
+
+    <section class="panel">
+      <h2>3) Step-by-step: ArtEmis path linking</h2>
+      <ol class="flow">
+        <li>Loaded the ArtEmis contrastive CSV.</li>
+        <li>Scanned WikiArt images and built a map from image name to real file path.</li>
+        <li>Used that map to fill in paths for painting and anchor painting.</li>
+        <li>Counted missing matches and exported the updated file.</li>
+      </ol>
+
+      <div class="code-box">
+        <div class="code-title">ArtEmis - matching names to WikiArt paths</div>
+        <pre><code class="language-python"># Build map: image stem -> possible relative paths
+name_to_paths = {}
+for img_path in image_files:
+    stem = img_path.stem.strip().lower()
+    rel_to_datasets = img_path.relative_to(project_root / "datasets")
+    name_to_paths.setdefault(stem, []).append(rel_to_datasets.as_posix())
+
+def resolve_image_path(name: str):
+    if pd.isna(name):
+        return None
+    key = str(name).strip().lower()
+    matches = name_to_paths.get(key, [])
+    if not matches:
+        return None
+    return sorted(matches)[0]  # deterministic
+
+df["painting_path"] = df["painting"].apply(resolve_image_path)
+df["anchor_painting_path"] = df["anchor_painting"].apply(resolve_image_path)
+
+print("Missing painting_path:", int(df["painting_path"].isna().sum()))
+print("Missing anchor_painting_path:", int(df["anchor_painting_path"].isna().sum()))
+
+df.to_csv(output_csv, index=False)</code></pre>
+      </div>
+    </section>
+
+    <section class="panel">
+      <h2>4) Step-by-step: WikiArt preparation in experiment notebooks</h2>
+      <p>
+        In the experiment notebooks, the main goal was to keep training input clean and stable.
+        The same preparation flow was reused across tests.
+      </p>
+      <p>
+        Each image is linked to a numeric label that points to an art style class.
+        This is how the model learns which style each painting belongs to.
+      </p>
+
+      <ol class="flow">
+        <li>Automatically found the dataset root and train/validation CSV files.</li>
+        <li>Built a clear label-to-style mapping from folder names.</li>
+        <li>Removed rows with missing files and, in later tests, checked if images were actually readable.</li>
+        <li>Applied image processing (resize, normalize, and extra image changes during training).</li>
+        <li>Used stable dataloader settings for Windows so loading did not fail or stall.</li>
+      </ol>
+
+      <div class="code-box">
+        <div class="code-title">WikiArt - finding files + label mapping</div>
+        <pre><code class="language-python">def find_split_csv(data_dir: Path, split: str) -> Path:
+    split = split.lower()
+    csvs = sorted(data_dir.glob("*.csv"))
+    preferred = [p for p in csvs if split in p.stem.lower() and "style" in p.stem.lower()]
+    if preferred:
+        return preferred[0]
+    fallback = [p for p in csvs if split in p.stem.lower()]
+    if fallback:
+        return fallback[0]
+    raise FileNotFoundError(f"Could not find a '{split}' CSV in {data_dir}")
+
+def extract_style_name(relative_path: str) -> str:
+    return Path(relative_path).parts[0]
+
+train_df["style_name"] = train_df["relative_path"].map(extract_style_name)
+label_to_style = (
+    train_df[["label", "style_name"]]
+    .drop_duplicates()
+    .sort_values("label")
+    .set_index("label")["style_name"]
+    .to_dict()
+)</code></pre>
+      </div>
+
+      <div class="code-box">
+        <div class="code-title">WikiArt - cleaning invalid rows + transforms</div>
+        <pre><code class="language-python">def filter_existing_rows(df: pd.DataFrame, image_root: Path, split_name: str) -> pd.DataFrame:
+    full_paths = df["relative_path"].map(lambda p: image_root / p)
+    exists_mask = full_paths.map(lambda p: p.exists())
+    kept = int(exists_mask.sum())
+    removed = int((~exists_mask).sum())
+    print(f"{split_name}: kept {kept:,}, removed {removed:,} missing files")
+    return df.loc[exists_mask].reset_index(drop=True)
+
+train_transform = transforms.Compose([
+    transforms.RandomResizedCrop(224, scale=(0.85, 1.0)),
+    transforms.RandomHorizontalFlip(p=0.5),
+    transforms.RandomRotation(degrees=10),
+    transforms.ColorJitter(brightness=0.2, contrast=0.2, saturation=0.15),
+    transforms.ToTensor(),
+    transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
+])
+
+if os.name == "nt":
+    num_workers = 0</code></pre>
+      </div>
+    </section>
+
+    <section class="panel">
+      <h2>5) How the preparation improved over time</h2>
+      <ul>
+        <li><strong>Early runs:</strong> basic loading, label mapping, missing-file cleanup, and simple transforms.</li>
+        <li><strong>Middle runs:</strong> stronger image changes during training and better checks for unreadable images.</li>
+        <li><strong>Later runs:</strong> faster filtering, safer checks, and more stable loading settings.</li>
+        <li><strong>Recovery stage:</strong> the same preparation structure was kept, and saved results could still be used.</li>
+      </ul>
+    </section>
+
+    <section class="panel">
+      <h2>6) Final outputs created by preparation</h2>
+      <ul>
+        <li><strong>ArtBench:</strong> saved a new CSV with local image paths, a simple CSV for training, a failed-download CSV, and local image folders.</li>
+        <li><strong>ArtEmis:</strong> saved a new CSV with matched WikiArt image paths.</li>
+        <li><strong>WikiArt:</strong> kept clean tables and stable data loaders ready for training.</li>
+      </ul>
+      <p>
+        Final takeaway: the data was not just collected.
+        It was checked, fixed, and cleaned before training.
+        That helped training run better and gave more reliable results.
+      </p>
+    </section>
+  </main>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.10.0/highlight.min.js"></script>
+  <script>
+    if (window.hljs) {
+      window.hljs.highlightAll();
+    }
+  </script>
+</body>
+</html>

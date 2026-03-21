@@ -1,0 +1,219 @@
+.analysis-panel {
+  flex: 1;
+  display: grid;
+  grid-template-columns: 380px 1fr;
+  height: calc(100vh - 60px);
+  animation: fade-in 0.4s ease both;
+}
+
+@keyframes fade-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+/* ── Left: artwork column ── */
+.analysis-panel__artwork-col {
+  position: sticky;
+  top: 60px;
+  height: calc(100vh - 60px);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 24px;
+  padding: 40px 32px;
+  background: var(--bg-surface);
+  border-right: 1px solid var(--border);
+  overflow: hidden;
+}
+
+/* Subtle noise-like background texture via radial gradient */
+.analysis-panel__artwork-col::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse at 50% 40%, rgba(201, 168, 76, 0.04) 0%, transparent 70%);
+  pointer-events: none;
+}
+
+/* ── Art frame ── */
+.artwork-frame {
+  position: relative;
+  /* outer frame border */
+  padding: 10px;
+  background: #181410;
+  border: 1px solid #332b1e;
+  box-shadow:
+    0 0 0 1px #1a1410,
+    0 0 0 8px #181410,
+    0 0 0 9px #2a2218,
+    0 12px 60px rgba(0, 0, 0, 0.7),
+    0 4px 20px rgba(0, 0, 0, 0.5);
+  border-radius: 2px;
+}
+
+/* Mat / passepartout */
+.artwork-frame__mat {
+  padding: 18px;
+  background: #f5f0e8;
+}
+
+.artwork-frame__img {
+  display: block;
+  max-width: 280px;
+  max-height: 46vh;
+  width: 100%;
+  height: auto;
+  object-fit: contain;
+}
+
+/* ── Artwork metadata below frame ── */
+.artwork-meta {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  text-align: center;
+}
+
+.artwork-meta__name {
+  font-size: 12px;
+  color: var(--text-muted);
+  max-width: 260px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.artwork-meta__reset {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 16px;
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-weight: 500;
+  transition: color 0.2s var(--ease-out), border-color 0.2s var(--ease-out);
+}
+
+.artwork-meta__reset:hover {
+  color: var(--text-primary);
+  border-color: #3a3530;
+}
+
+/* ── Right: scrollable results ── */
+.analysis-panel__results {
+  overflow-y: auto;
+  padding: 36px 40px 60px;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.results-header {
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--border);
+}
+
+.results-header__title {
+  font-family: var(--font-serif);
+  font-size: 26px;
+  font-weight: 600;
+  color: var(--text-primary);
+  letter-spacing: -0.01em;
+}
+
+.results-header__sub {
+  margin-top: 4px;
+  font-size: 12px;
+  color: var(--text-muted);
+  letter-spacing: 0.04em;
+}
+
+/* ── Card grid ── */
+.results-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 14px;
+}
+
+/* Cards that should span both columns */
+.results-grid > .analysis-card:nth-child(4),  /* Emotional Resonance */
+.results-grid > .analysis-card:nth-child(6),  /* Colour Palette */
+.results-grid > .analysis-card:nth-child(8) { /* Critical Analysis */
+  grid-column: 1 / -1;
+}
+
+/* ── Score Ring ── */
+.score-ring {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 96px;
+  height: 96px;
+  margin-top: 4px;
+}
+
+.score-ring svg {
+  position: absolute;
+  inset: 0;
+}
+
+.score-ring__text {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: baseline;
+  gap: 3px;
+}
+
+.score-ring__value {
+  font-family: var(--font-serif);
+  font-size: 24px;
+  font-weight: 700;
+  color: var(--text-primary);
+  line-height: 1;
+}
+
+.score-ring__denom {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+/* ── Responsive ── */
+@media (max-width: 960px) {
+  .analysis-panel {
+    grid-template-columns: 1fr;
+    height: auto;
+  }
+
+  .analysis-panel__artwork-col {
+    position: static;
+    height: auto;
+    padding: 40px 24px 32px;
+    border-right: none;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .analysis-panel__results {
+    padding: 32px 24px 60px;
+  }
+
+  .results-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .results-grid > .analysis-card {
+    grid-column: 1 / -1;
+  }
+}
+
+@media (max-width: 600px) {
+  .artwork-frame__img {
+    max-width: 220px;
+  }
+}

@@ -1,0 +1,196 @@
+/* ═══════════════════════════════════════
+   Upload Zone — the main interactive canvas
+═══════════════════════════════════════ */
+
+.upload-zone {
+  position: relative;
+  width: 100%;
+  max-width: 860px;
+  min-height: 460px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border);
+  background: var(--bg-surface);
+  outline: none;
+  overflow: hidden;
+
+  /* subtle breathing glow even at rest */
+  transition:
+    border-color 0.35s var(--ease-out),
+    box-shadow   0.35s var(--ease-out);
+  animation: zone-breathe 6s ease-in-out infinite;
+}
+
+@keyframes zone-breathe {
+  0%, 100% { box-shadow: 0 0 0 0 transparent, inset 0 0 0 0 transparent; }
+  50%       { box-shadow: 0 0 48px rgba(201,168,76,0.05), inset 0 0 40px rgba(201,168,76,0.02); }
+}
+
+.upload-zone:hover,
+.upload-zone:focus-visible {
+  border-color: rgba(201, 168, 76, 0.45);
+  box-shadow: 0 0 80px rgba(201,168,76,0.1), inset 0 0 60px rgba(201,168,76,0.04);
+  animation: none;
+}
+
+.upload-zone--dragging {
+  border-color: var(--gold) !important;
+  box-shadow:
+    0 0 0 1px rgba(201,168,76,0.3),
+    0 0 120px rgba(201,168,76,0.2),
+    inset 0 0 120px rgba(201,168,76,0.06) !important;
+  animation: none !important;
+}
+
+/* ── Animated gold sweep when dragging ── */
+.upload-zone__drag-glow {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse 60% 50% at 50% 50%, rgba(201,168,76,0.07) 0%, transparent 70%);
+  pointer-events: none;
+}
+
+/* ── Corner brackets ── */
+.corner {
+  position: absolute;
+  width: 28px;
+  height: 28px;
+  border-color: var(--gold);
+  border-style: solid;
+  opacity: 0.35;
+  transition:
+    width   0.4s var(--ease-out),
+    height  0.4s var(--ease-out),
+    opacity 0.4s var(--ease-out);
+}
+
+.corner--tl { top: 20px;    left: 20px;    border-width: 2px 0 0 2px; }
+.corner--tr { top: 20px;    right: 20px;   border-width: 2px 2px 0 0; }
+.corner--bl { bottom: 20px; left: 20px;    border-width: 0 0 2px 2px; }
+.corner--br { bottom: 20px; right: 20px;   border-width: 0 2px 2px 0; }
+
+.upload-zone:hover .corner,
+.upload-zone:focus-visible .corner {
+  width: 38px;
+  height: 38px;
+  opacity: 0.9;
+}
+
+.upload-zone--dragging .corner {
+  width: 52px !important;
+  height: 52px !important;
+  opacity: 1 !important;
+}
+
+/* ── Inner body ── */
+.upload-zone__body {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 20px;
+  padding: 48px 40px;
+  text-align: center;
+  pointer-events: none; /* zone div handles all clicks */
+}
+
+/* ── Canvas icon ── */
+.upload-zone__canvas-icon {
+  color: var(--text-muted);
+  transition: color 0.35s var(--ease-out);
+}
+
+.upload-zone:hover .upload-zone__canvas-icon,
+.upload-zone--dragging .upload-zone__canvas-icon {
+  color: var(--gold);
+}
+
+/* ── Instruction text ── */
+.upload-zone__instruction {
+  font-family: var(--font-serif);
+  font-size: 22px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  letter-spacing: -0.01em;
+  transition: color 0.2s;
+}
+
+.upload-zone--dragging .upload-zone__instruction {
+  color: var(--gold-light);
+}
+
+/* ── CTA row ── */
+.upload-zone__actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  pointer-events: all;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.upload-zone__browse-btn {
+  padding: 10px 28px;
+  background: transparent;
+  border: 1px solid var(--gold);
+  border-radius: var(--radius-sm);
+  color: var(--gold);
+  font-size: 13px;
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  transition: background 0.2s var(--ease-out), color 0.2s var(--ease-out);
+}
+
+.upload-zone__browse-btn:hover {
+  background: var(--gold-dim);
+  color: var(--gold-light);
+}
+
+.upload-zone__camera-btn {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 10px 20px;
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text-muted);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.upload-zone__soon {
+  padding: 2px 7px;
+  background: var(--bg-elevated);
+  border-radius: 99px;
+  font-size: 9px;
+  font-weight: 600;
+  color: var(--gold);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+/* ── Error ── */
+.upload-zone__error {
+  font-size: 12px;
+  color: #e07060;
+  background: rgba(224, 112, 96, 0.08);
+  border: 1px solid rgba(224, 112, 96, 0.2);
+  border-radius: var(--radius-sm);
+  padding: 6px 16px;
+  pointer-events: none;
+}
+
+/* ── Responsive ── */
+@media (max-width: 600px) {
+  .upload-zone {
+    min-height: 360px;
+  }
+  .upload-zone__instruction {
+    font-size: 18px;
+  }
+}

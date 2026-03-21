@@ -1,0 +1,62 @@
+[
+  {
+    "notebook": "wikiart_style_classification_test1.ipynb",
+    "exists": true,
+    "model_name": "resnet18",
+    "val_loss": 1.4387,
+    "val_top1": 0.53,
+    "val_top5": 0.53,
+    "test_loss": NaN,
+    "test_top1": 0.53,
+    "test_top5": 0.53,
+    "best_val_top1": 0.53,
+    "best_epoch": NaN,
+    "experiment": "test1",
+    "saved_at_utc": "2026-03-11T20:40:53.839304+00:00"
+  },
+  {
+    "notebook": "wikiart_style_classification_test2.ipynb",
+    "exists": true,
+    "model_name": "resnet18",
+    "val_loss": 1.2548,
+    "val_top1": 0.578,
+    "val_top5": 0.578,
+    "test_loss": NaN,
+    "test_top1": 0.577,
+    "test_top5": 0.577,
+    "best_val_top1": NaN,
+    "best_epoch": NaN,
+    "experiment": "test2",
+    "saved_at_utc": "2026-03-11T20:40:53.839304+00:00"
+  },
+  {
+    "notebook": "wikiart_style_classification_test3.ipynb",
+    "exists": true,
+    "model_name": "resnet50",
+    "val_loss": 1.2899,
+    "val_top1": 0.632,
+    "val_top5": 0.632,
+    "test_loss": NaN,
+    "test_top1": 0.632,
+    "test_top5": 0.632,
+    "best_val_top1": NaN,
+    "best_epoch": NaN,
+    "experiment": "test3",
+    "saved_at_utc": "2026-03-11T20:40:53.839304+00:00"
+  },
+  {
+    "notebook": "wikiart_style_classification_test4.ipynb",
+    "exists": true,
+    "model_name": "convnext_tiny",
+    "val_loss": 4.561191882916252,
+    "val_top1": 0.6690432604297138,
+    "val_top5": 0.7660660949995183,
+    "test_loss": 3.109938202645002,
+    "test_top1": 0.6541086541086542,
+    "test_top5": 0.7578487578487578,
+    "best_val_top1": 0.6690432604297138,
+    "best_epoch": 25.0,
+    "experiment": "test4",
+    "saved_at_utc": "2026-03-11T20:40:53.839304+00:00"
+  }
+]

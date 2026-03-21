@@ -1,0 +1,285 @@
+.analysis-card {
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  animation: card-appear 0.45s var(--ease-out) both;
+  transition: border-color 0.25s var(--ease-out), box-shadow 0.25s var(--ease-out);
+}
+
+.analysis-card:hover {
+  border-color: var(--border-accent);
+  box-shadow: 0 0 0 1px var(--border-accent) inset, 0 6px 24px rgba(201, 168, 76, 0.05);
+}
+
+@keyframes card-appear {
+  from { opacity: 0; transform: translateY(18px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.analysis-card__header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 14px 20px;
+  border-bottom: 1px solid var(--border);
+}
+
+.analysis-card__icon {
+  font-size: 14px;
+  line-height: 1;
+  opacity: 0.7;
+}
+
+.analysis-card__label {
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--text-muted);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.analysis-card__body {
+  padding: 20px;
+}
+
+/* ── Shared sub-elements used across card types ── */
+
+/* Big value display */
+.card-value {
+  font-family: var(--font-serif);
+  font-size: 24px;
+  font-weight: 600;
+  color: var(--text-primary);
+  line-height: 1.2;
+}
+
+.card-value--large {
+  font-size: 32px;
+}
+
+/* Confidence bar */
+.confidence-wrap {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 10px;
+}
+
+.confidence-track {
+  flex: 1;
+  height: 3px;
+  background: var(--bg-elevated);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.confidence-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--gold), var(--gold-light));
+  border-radius: 2px;
+  width: var(--pct);
+  animation: bar-grow 1s 0.4s var(--ease-out) both;
+}
+
+@keyframes bar-grow {
+  from { width: 0; }
+  to   { width: var(--pct); }
+}
+
+.confidence-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--gold);
+  white-space: nowrap;
+}
+
+/* Tag pills */
+.tag-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.tag {
+  padding: 4px 12px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border);
+  border-radius: 99px;
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.tag--primary {
+  background: var(--gold-dim);
+  border-color: var(--border-accent);
+  color: var(--gold-light);
+  font-weight: 500;
+}
+
+/* Metric grid (key / value pairs) */
+.metric-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-top: 4px;
+}
+
+.metric-cell {
+  background: var(--bg-elevated);
+  border-radius: var(--radius-sm);
+  padding: 12px 14px;
+}
+
+.metric-cell__key {
+  font-size: 10px;
+  color: var(--text-muted);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  margin-bottom: 4px;
+}
+
+.metric-cell__val {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+/* Colour swatches */
+.palette-gradient {
+  height: 7px;
+  border-radius: 4px;
+  margin-bottom: 14px;
+  opacity: 0.9;
+}
+
+.palette-row {
+  display: flex;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.swatch {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  align-items: center;
+}
+
+.swatch__color {
+  width: 100%;
+  aspect-ratio: 1 / 1.4;
+  border-radius: var(--radius-sm);
+  border: 1px solid rgba(255,255,255,0.06);
+}
+
+.swatch__hex {
+  font-size: 9px;
+  color: var(--text-muted);
+  letter-spacing: 0.04em;
+  font-family: monospace;
+}
+
+/* Artist influence list */
+.influence-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.influence-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  background: var(--bg-elevated);
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.influence-item::before {
+  content: '';
+  display: block;
+  width: 3px;
+  height: 3px;
+  border-radius: 50%;
+  background: var(--gold);
+  opacity: 0.7;
+  flex-shrink: 0;
+}
+
+/* Critique text */
+.critique-text {
+  font-family: var(--font-serif);
+  font-style: italic;
+  font-size: 15px;
+  line-height: 1.75;
+  color: var(--text-secondary);
+}
+
+/* Score display */
+.score-display {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  margin-top: 4px;
+}
+
+.score-display__value {
+  font-family: var(--font-serif);
+  font-size: 42px;
+  font-weight: 700;
+  color: var(--text-primary);
+  line-height: 1;
+}
+
+.score-display__denom {
+  font-size: 16px;
+  color: var(--text-muted);
+}
+
+/* Emotion bars */
+.emotion-row {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 4px;
+}
+
+.emotion-bar {
+  display: grid;
+  grid-template-columns: 100px 1fr 36px;
+  align-items: center;
+  gap: 10px;
+}
+
+.emotion-bar__label {
+  font-size: 12px;
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+
+.emotion-bar__track {
+  height: 3px;
+  background: var(--bg-elevated);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.emotion-bar__fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--gold), var(--gold-light));
+  border-radius: 2px;
+  width: var(--pct);
+  animation: bar-grow 1s 0.6s var(--ease-out) both;
+}
+
+.emotion-bar__pct {
+  font-size: 11px;
+  color: var(--text-muted);
+  text-align: right;
+}
