@@ -6,7 +6,7 @@ import AnalysisPanel from './components/AnalysisPanel/AnalysisPanel'
 import Footer from './components/Footer/Footer'
 import './App.css'
 
-const API_URL = 'http://localhost:5000'
+const API_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:5000'
 
 async function analyzeImage(file) {
   const formData = new FormData()
