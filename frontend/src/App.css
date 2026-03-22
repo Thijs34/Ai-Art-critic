@@ -9,3 +9,42 @@
   display: flex;
   flex-direction: column;
 }
+
+.app__error {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 80px 24px;
+  text-align: center;
+}
+
+.app__error-title {
+  font-family: var(--font-serif);
+  font-size: 22px;
+  color: var(--text-primary);
+}
+
+.app__error-msg {
+  font-size: 13px;
+  color: var(--text-muted);
+  max-width: 400px;
+}
+
+.app__error-retry {
+  margin-top: 8px;
+  padding: 9px 22px;
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text-secondary);
+  font-size: 13px;
+  transition: color 0.2s, border-color 0.2s;
+}
+
+.app__error-retry:hover {
+  color: var(--text-primary);
+  border-color: var(--border-accent);
+}

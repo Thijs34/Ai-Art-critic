@@ -1,9 +1,9 @@
 import './AnalysisCard.css'
 
-export default function AnalysisCard({ label, icon, children, index = 0 }) {
+export default function AnalysisCard({ label, icon, children, index = 0, pending = false }) {
   return (
     <div
-      className="analysis-card"
+      className={`analysis-card${pending ? ' analysis-card--pending' : ''}`}
       style={{ animationDelay: `${index * 90}ms` }}
     >
       <div className="analysis-card__header">

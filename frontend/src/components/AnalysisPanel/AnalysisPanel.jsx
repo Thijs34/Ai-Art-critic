@@ -2,12 +2,12 @@ import { useEffect, useState } from 'react'
 import AnalysisCard from '../AnalysisCard/AnalysisCard'
 import './AnalysisPanel.css'
 
-/* ── Animated circular score ring ── */
-function ScoreRing({ value, max = 10 }) {
+/* ── Animated circular score ring (used for style confidence) ── */
+function ConfidenceRing({ value }) {
   const [displayed, setDisplayed] = useState(0)
   const r = 34
   const circ = 2 * Math.PI * r
-  const filled = (displayed / max) * circ
+  const filled = (displayed / 100) * circ
 
   useEffect(() => {
     let frame
@@ -16,7 +16,7 @@ function ScoreRing({ value, max = 10 }) {
     const animate = (now) => {
       const t = Math.min((now - start) / duration, 1)
       const ease = 1 - Math.pow(1 - t, 3)
-      setDisplayed(parseFloat((value * ease).toFixed(1)))
+      setDisplayed(Math.round(value * ease))
       if (t < 1) frame = requestAnimationFrame(animate)
     }
     frame = requestAnimationFrame(animate)
@@ -32,9 +32,7 @@ function ScoreRing({ value, max = 10 }) {
             <stop offset="100%" stopColor="var(--gold-light)" />
           </linearGradient>
         </defs>
-        {/* Track */}
         <circle cx="48" cy="48" r={r} stroke="var(--bg-elevated)" strokeWidth="5" fill="none" />
-        {/* Fill */}
         <circle
           cx="48" cy="48" r={r}
           stroke="url(#score-grad)"
@@ -47,18 +45,30 @@ function ScoreRing({ value, max = 10 }) {
       </svg>
       <div className="score-ring__text">
         <span className="score-ring__value">{displayed}</span>
-        <span className="score-ring__denom">/ {max}</span>
+        <span className="score-ring__denom">%</span>
       </div>
     </div>
   )
 }
 
+/* ── Pending card — shown for models not yet trained ── */
+function PendingCard({ label, icon, index }) {
+  return (
+    <AnalysisCard label={label} icon={icon} index={index} pending>
+      <div className="card-pending">
+        <div className="card-pending__dot" aria-hidden="true" />
+        <span>Model in development</span>
+      </div>
+    </AnalysisCard>
+  )
+}
+
 export default function AnalysisPanel({ imageUrl, imageName, analysis, onReset }) {
-  const { style, period, emotions, aestheticScore, composition, palette, influences, critique } = analysis
-  const paletteGradient = `linear-gradient(90deg, ${palette.join(', ')})`
+  const { style, top5 } = analysis
 
   return (
     <div className="analysis-panel">
+
       {/* ── Left: Artwork ── */}
       <aside className="analysis-panel__artwork-col">
         <div className="artwork-frame">
@@ -81,12 +91,12 @@ export default function AnalysisPanel({ imageUrl, imageName, analysis, onReset }
       <section className="analysis-panel__results">
         <div className="results-header">
           <h2 className="results-header__title">Analysis Complete</h2>
-          <p className="results-header__sub">AI-generated art critique &amp; classification</p>
+          <p className="results-header__sub">AI-generated art classification</p>
         </div>
 
         <div className="results-grid">
 
-          {/* Art Style */}
+          {/* Art Style — live */}
           <AnalysisCard label="Art Style" icon="🖼" index={0}>
             <p className="card-value">{style.label}</p>
             <div className="confidence-wrap">
@@ -104,95 +114,40 @@ export default function AnalysisPanel({ imageUrl, imageName, analysis, onReset }
             </div>
           </AnalysisCard>
 
-          {/* Aesthetic Score */}
-          <AnalysisCard label="Aesthetic Score" icon="✦" index={1}>
-            <ScoreRing value={aestheticScore} />
+          {/* Confidence ring — live */}
+          <AnalysisCard label="Confidence" icon="✦" index={1}>
+            <ConfidenceRing value={style.confidence} />
           </AnalysisCard>
 
-          {/* Historical Period */}
-          <AnalysisCard label="Historical Period" icon="⏳" index={2}>
-            <p className="card-value">{period.label}</p>
-            <p style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 6 }}>{period.range}</p>
-            <div className="confidence-wrap">
-              <div className="confidence-track">
-                <div
-                  className="confidence-fill"
-                  style={{ '--pct': `${period.confidence}%` }}
-                  role="progressbar"
-                  aria-valuenow={period.confidence}
-                  aria-valuemin={0}
-                  aria-valuemax={100}
-                />
-              </div>
-              <span className="confidence-label">{period.confidence}%</span>
-            </div>
-          </AnalysisCard>
+          {/* Historical Period — pending */}
+          <PendingCard label="Historical Period" icon="⏳" index={2} />
 
-          {/* Emotional Resonance */}
-          <AnalysisCard label="Emotional Resonance" icon="◎" index={3}>
-            <div className="emotion-row">
-              {emotions.map((e) => (
-                <div key={e.label} className="emotion-bar">
-                  <span className="emotion-bar__label">{e.label}</span>
-                  <div className="emotion-bar__track">
+          {/* Emotional Tone — pending */}
+          <PendingCard label="Emotional Tone" icon="◎" index={3} />
+
+          {/* Context — pending */}
+          <PendingCard label="Context" icon="⊞" index={4} />
+
+          {/* Artist — pending */}
+          <PendingCard label="Artist / Looks like" icon="✦" index={5} />
+
+          {/* Top-5 breakdown — live */}
+          <AnalysisCard label="Style Breakdown" icon="◐" index={6}>
+            <div className="top5-list">
+              {top5.map((item, i) => (
+                <div key={item.label} className="top5-row">
+                  <span className="top5-row__rank">{i + 1}</span>
+                  <span className="top5-row__label">{item.label}</span>
+                  <div className="top5-row__track">
                     <div
-                      className="emotion-bar__fill"
-                      style={{ '--pct': `${Math.round(e.score * 100)}%` }}
-                      role="progressbar"
-                      aria-valuenow={Math.round(e.score * 100)}
-                      aria-valuemin={0}
-                      aria-valuemax={100}
+                      className="top5-row__fill"
+                      style={{ '--pct': `${item.confidence}%`, animationDelay: `${0.4 + i * 0.1}s` }}
                     />
                   </div>
-                  <span className="emotion-bar__pct">{Math.round(e.score * 100)}%</span>
+                  <span className="top5-row__pct">{item.confidence}%</span>
                 </div>
               ))}
             </div>
-          </AnalysisCard>
-
-          {/* Composition */}
-          <AnalysisCard label="Composition" icon="⊞" index={4}>
-            <div className="metric-grid">
-              <div className="metric-cell">
-                <div className="metric-cell__key">Principle</div>
-                <div className="metric-cell__val">{composition.rule}</div>
-              </div>
-              <div className="metric-cell">
-                <div className="metric-cell__key">Focal Element</div>
-                <div className="metric-cell__val">{composition.element}</div>
-              </div>
-              <div className="metric-cell">
-                <div className="metric-cell__key">Visual Depth</div>
-                <div className="metric-cell__val">{composition.depth}</div>
-              </div>
-            </div>
-          </AnalysisCard>
-
-          {/* Colour Palette */}
-          <AnalysisCard label="Colour Palette" icon="◐" index={5}>
-            <div className="palette-gradient" style={{ background: paletteGradient }} aria-hidden="true" />
-            <div className="palette-row">
-              {palette.map((hex) => (
-                <div key={hex} className="swatch">
-                  <div className="swatch__color" style={{ background: hex }} title={hex} />
-                  <span className="swatch__hex">{hex}</span>
-                </div>
-              ))}
-            </div>
-          </AnalysisCard>
-
-          {/* Artistic Influences */}
-          <AnalysisCard label="Artistic Influences" icon="✦" index={6}>
-            <div className="influence-list">
-              {influences.map((name) => (
-                <div key={name} className="influence-item">{name}</div>
-              ))}
-            </div>
-          </AnalysisCard>
-
-          {/* Critical Analysis */}
-          <AnalysisCard label="Critical Analysis" icon="✎" index={7}>
-            <p className="critique-text">"{critique}"</p>
           </AnalysisCard>
 
         </div>

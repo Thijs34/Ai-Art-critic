@@ -140,11 +140,77 @@
   gap: 14px;
 }
 
-/* Cards that should span both columns */
-.results-grid > .analysis-card:nth-child(4),  /* Emotional Resonance */
-.results-grid > .analysis-card:nth-child(6),  /* Colour Palette */
-.results-grid > .analysis-card:nth-child(8) { /* Critical Analysis */
+/* Style Breakdown spans both columns */
+.results-grid > .analysis-card:last-child {
   grid-column: 1 / -1;
+}
+
+/* ── Top-5 breakdown ── */
+.top5-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.top5-row {
+  display: grid;
+  grid-template-columns: 18px 1fr auto auto;
+  align-items: center;
+  gap: 10px;
+}
+
+.top5-row__rank {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-align: right;
+}
+
+.top5-row__label {
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.top5-row__track {
+  width: 80px;
+  height: 3px;
+  background: var(--bg-elevated);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.top5-row__fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--gold), var(--gold-light));
+  border-radius: 2px;
+  width: var(--pct);
+  animation: bar-grow 0.9s var(--ease-out) both;
+}
+
+.top5-row__pct {
+  font-size: 11px;
+  color: var(--text-muted);
+  min-width: 36px;
+  text-align: right;
+}
+
+/* ── Pending card body ── */
+.card-pending {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--text-muted);
+  font-style: italic;
+}
+
+.card-pending__dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--border);
+  flex-shrink: 0;
+  animation: badge-pulse 2.5s ease-in-out infinite;
 }
 
 /* ── Score Ring ── */
