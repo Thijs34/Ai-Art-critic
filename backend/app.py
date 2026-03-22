@@ -3,6 +3,7 @@ Lumora – Art Style Classification API
 Serves the wikiart_test7 ViT model for art style prediction.
 """
 
+import os
 from pathlib import Path
 
 import torch
@@ -15,6 +16,19 @@ from flask_cors import CORS
 # ── Paths ──────────────────────────────────────────────────────────────────────
 ROOT = Path(__file__).parent.parent
 MODEL_PATH = ROOT / "models" / "wikiart_test7_best.pt"
+
+# ── Download model from Hugging Face Hub if not present ───────────────────────
+HF_REPO = os.environ.get("HF_MODEL_REPO")   # e.g. "your-username/lumora-model"
+if HF_REPO and not MODEL_PATH.exists():
+    print(f"Model not found locally — downloading from {HF_REPO} …")
+    from huggingface_hub import hf_hub_download
+    MODEL_PATH.parent.mkdir(parents=True, exist_ok=True)
+    downloaded = hf_hub_download(
+        repo_id=HF_REPO,
+        filename="wikiart_test7_best.pt",
+        local_dir=str(MODEL_PATH.parent),
+    )
+    print(f"Model downloaded to {downloaded}")
 
 # ── Class names (label index → human-readable style) ──────────────────────────
 CLASS_NAMES = {
