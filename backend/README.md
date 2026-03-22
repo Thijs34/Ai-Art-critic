@@ -2,7 +2,7 @@
 title: Ai Art Critic
 emoji: 🎨
 colorFrom: yellow
-colorTo: orange
+colorTo: red
 sdk: docker
 pinned: false
 ---
