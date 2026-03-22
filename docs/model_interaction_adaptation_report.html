@@ -6,13 +6,24 @@
   <title>AI Art Critic - Model Development Report</title>
   <link rel="preconnect" href="https://cdnjs.cloudflare.com" />
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.10.0/styles/github.min.css" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
   <style>
     :root {
-      --bg: #f3f6fb;
+      --bg: #f0f4fb;
       --panel: #ffffff;
       --text: #1f2937;
       --muted: #4b5563;
       --line: #dbe3ef;
+      --accent: #1d4ed8;
+      --accent-soft: #eff6ff;
+      --green: #16a34a;
+      --green-soft: #f0fdf4;
+      --orange: #ea580c;
+      --orange-soft: #fff7ed;
+      --purple: #7c3aed;
+      --purple-soft: #f5f3ff;
+      --teal: #0d9488;
+      --teal-soft: #f0fdfa;
     }
 
     * { box-sizing: border-box; }
@@ -22,277 +33,476 @@
       font-family: "Segoe UI", Roboto, Arial, sans-serif;
       color: var(--text);
       background: var(--bg);
-      line-height: 1.6;
+      line-height: 1.65;
+      font-size: 0.97rem;
     }
 
     .container {
-      max-width: 980px;
-      margin: 24px auto;
-      padding: 0 16px 24px;
+      max-width: 1020px;
+      margin: 28px auto;
+      padding: 0 18px 32px;
     }
 
+    /* Hero */
     .hero {
-      background: linear-gradient(145deg, #eaf2ff, #ffffff);
-      border: 1px solid var(--line);
-      border-radius: 14px;
-      padding: 18px;
-      margin-bottom: 14px;
+      background: linear-gradient(135deg, #0f172a 0%, #1d4ed8 55%, #3b82f6 100%);
+      color: #fff;
+      border-radius: 16px;
+      padding: 28px 30px 22px;
+      margin-bottom: 18px;
+    }
+    .hero h1 { font-size: 1.8rem; margin: 0 0 8px; color: #fff; }
+    .hero p  { margin: 5px 0; opacity: 0.92; }
+    .hero .badge {
+      display: inline-block;
+      background: rgba(255,255,255,0.16);
+      border: 1px solid rgba(255,255,255,0.32);
+      border-radius: 20px;
+      padding: 3px 12px;
+      font-size: 0.82rem;
+      margin: 6px 4px 0 0;
     }
 
-    h1, h2, h3 { line-height: 1.25; margin-top: 0; }
-    h1 { font-size: 1.75rem; margin-bottom: 8px; }
-    h2 { font-size: 1.22rem; margin-bottom: 8px; color: #0f2f7a; }
-    h3 { font-size: 1.02rem; margin-bottom: 6px; color: #1d4ed8; }
-
-    p { margin: 7px 0; }
-
+    /* Panel */
     .panel {
       background: var(--panel);
       border: 1px solid var(--line);
-      border-radius: 12px;
-      padding: 15px;
-      margin-top: 12px;
+      border-radius: 14px;
+      padding: 20px 22px;
+      margin-top: 16px;
     }
 
+    h2 {
+      font-size: 1.18rem;
+      color: #0f2f7a;
+      margin: 0 0 10px;
+      border-bottom: 2px solid var(--line);
+      padding-bottom: 6px;
+    }
+    h3 { font-size: 1.0rem; color: #1d4ed8; margin: 14px 0 5px; }
+    p  { margin: 6px 0; }
+
+    /* Stat cards */
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 12px;
+      margin-top: 12px;
+    }
+    .stat-card {
+      border-radius: 11px;
+      padding: 14px 16px;
+      border: 1px solid var(--line);
+    }
+    .stat-card.blue   { background: var(--accent-soft);  border-color: #bfdbfe; }
+    .stat-card.green  { background: var(--green-soft);   border-color: #bbf7d0; }
+    .stat-card.orange { background: var(--orange-soft);  border-color: #fed7aa; }
+    .stat-card.purple { background: var(--purple-soft);  border-color: #ddd6fe; }
+    .stat-card.teal   { background: var(--teal-soft);    border-color: #99f6e4; }
+    .stat-card .num {
+      font-size: 1.6rem;
+      font-weight: 700;
+      line-height: 1.1;
+      color: var(--text);
+    }
+    .stat-card .label { font-size: 0.82rem; color: var(--muted); margin-top: 2px; }
+
+    /* Flow list */
     .flow {
-      margin: 8px 0 0 0;
+      margin: 10px 0 0;
       padding: 0;
       list-style: none;
       counter-reset: step;
     }
-
     .flow li {
       counter-increment: step;
       background: #fafcff;
       border: 1px solid #e4eaf5;
       border-radius: 10px;
-      padding: 10px 12px;
+      padding: 10px 12px 10px 44px;
       margin: 8px 0;
       position: relative;
-      padding-left: 42px;
     }
-
     .flow li::before {
       content: counter(step);
       position: absolute;
       left: 12px;
       top: 10px;
-      width: 22px;
-      height: 22px;
+      width: 24px;
+      height: 24px;
       border-radius: 50%;
       background: #dbeafe;
       color: #1e3a8a;
       font-weight: 700;
       display: grid;
       place-items: center;
-      font-size: 0.85rem;
+      font-size: 0.84rem;
+    }
+
+    /* Table */
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 10px;
+      font-size: 0.92rem;
+    }
+    th, td {
+      border: 1px solid var(--line);
+      padding: 8px 10px;
+      vertical-align: top;
+      text-align: left;
+    }
+    th { background: #f1f5ff; font-weight: 600; }
+    tr:nth-child(even) td { background: #fafbff; }
+    td.best { background: #dcfce7 !important; font-weight: 600; color: #14532d; }
+
+    /* Code box */
+    .code-box {
+      border: 1px solid var(--line);
+      border-radius: 11px;
+      overflow: hidden;
+      margin-top: 12px;
+    }
+    .code-title {
+      background: #f1f5ff;
+      border-bottom: 1px solid var(--line);
+      color: #1f3e8a;
+      font-weight: 600;
+      font-size: 0.83rem;
+      padding: 6px 12px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .code-title::before {
+      content: "{ }";
+      font-family: monospace;
+      background: #dbeafe;
+      color: #1e3a8a;
+      border-radius: 4px;
+      padding: 1px 5px;
+      font-size: 0.78rem;
+    }
+    pre {
+      margin: 0;
+      padding: 13px;
+      font-size: 0.84rem;
+      line-height: 1.5;
+      background: #fff;
+      white-space: pre-wrap;
+      word-break: break-word;
+      overflow-wrap: anywhere;
+    }
+    pre code { font-family: Consolas, "Courier New", monospace; }
+
+    /* Note */
+    .note {
+      background: #f7f9fc;
+      border-left: 4px solid #93c5fd;
+      border-radius: 0 8px 8px 0;
+      padding: 10px 12px;
+      color: var(--muted);
+      margin-top: 10px;
+      font-size: 0.91rem;
+    }
+
+    /* Chart */
+    .chart-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 14px;
+      margin-top: 14px;
+    }
+    .chart-wrap {
+      background: #fafbff;
+      border: 1px solid var(--line);
+      border-radius: 11px;
+      padding: 14px;
+    }
+    .chart-wrap.full { grid-column: 1 / -1; }
+    .chart-title {
+      font-weight: 600;
+      font-size: 0.88rem;
+      color: #0f2f7a;
+      margin-bottom: 10px;
+    }
+
+    /* Pill badge */
+    .pill {
+      display: inline-block;
+      border-radius: 20px;
+      padding: 2px 9px;
+      font-size: 0.78rem;
+      font-weight: 600;
+      margin: 0 2px;
+    }
+    .pill.blue   { background: #dbeafe; color: #1e3a8a; }
+    .pill.green  { background: #dcfce7; color: #14532d; }
+    .pill.orange { background: #ffedd5; color: #7c2d12; }
+    .pill.purple { background: #ede9fe; color: #4c1d95; }
+    .pill.teal   { background: #ccfbf1; color: #134e4a; }
+
+    /* Section label */
+    .section-label {
+      font-size: 0.75rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: #6b7280;
+      margin: 24px 0 4px;
     }
 
     ul { margin: 8px 0 0 18px; }
     li { margin: 4px 0; }
 
-    table {
-      width: 100%;
-      border-collapse: collapse;
-      margin-top: 10px;
-      font-size: 0.96rem;
-    }
-
-    th, td {
-      border: 1px solid #dbe3ef;
-      padding: 8px;
-      vertical-align: top;
-      text-align: left;
-    }
-
-    th { background: #f1f5ff; }
-
-    .code-box {
-      border: 1px solid #dbe3ef;
-      border-radius: 10px;
-      overflow: hidden;
-      margin-top: 10px;
-      background: #ffffff;
-    }
-
-    .code-title {
-      background: #f6f9ff;
-      border-bottom: 1px solid #dbe3ef;
-      color: #1f3e8a;
-      font-weight: 600;
-      font-size: 0.86rem;
-      padding: 6px 10px;
-    }
-
-    pre {
-      margin: 0;
-      padding: 12px;
-      font-size: 0.86rem;
-      line-height: 1.45;
-      white-space: pre-wrap;
-      word-break: break-word;
-      overflow-wrap: anywhere;
-      overflow-x: visible;
-    }
-
-    pre code {
-      white-space: pre-wrap;
-      word-break: break-word;
-      overflow-wrap: anywhere;
-      overflow-x: visible;
-      font-family: Consolas, "Courier New", monospace;
-    }
-
-    .note {
-      background: #f7f9fc;
-      border: 1px dashed #cfd8e6;
-      border-radius: 8px;
-      padding: 10px;
-      color: var(--muted);
-      margin-top: 10px;
-    }
-
+    /* Print */
     @media print {
       @page { margin: 12mm; }
-      body { background: #fff; }
-      .container { max-width: 100%; margin: 0; padding: 0; }
-      .hero, .panel {
-        box-shadow: none;
+      body { background: #fff; font-size: 0.88rem; line-height: 1.45; }
+      .container { max-width: 100%; margin: 0; padding: 0 0 8px; }
+      .hero {
+        background: #0f172a !important;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+        padding: 16px 18px 14px;
+        margin-bottom: 8px;
+        border-radius: 10px;
+      }
+      .hero h1 { font-size: 1.35rem; margin-bottom: 5px; color: #fff !important; }
+      .hero p, .badge { color: #fff !important; }
+      .hero p { margin: 3px 0; }
+      /* Let panels break naturally across pages — no forced jumps */
+      .panel {
+        margin-top: 8px;
+        padding: 12px 14px;
+        border-radius: 8px;
         break-inside: auto;
         page-break-inside: auto;
-        margin-top: 6px;
-        margin-bottom: 6px;
-        padding: 10px 12px;
       }
-      .hero { margin-bottom: 8px; }
-      h1 { font-size: 1.5rem; margin-bottom: 6px; }
-      h2 { font-size: 1.08rem; margin-bottom: 6px; }
-      h3 { font-size: 0.96rem; margin-bottom: 5px; }
-      p { margin: 4px 0; }
-      ul, .flow { margin-top: 4px; }
-      .flow li {
-        margin: 5px 0;
-        padding-top: 7px;
-        padding-bottom: 7px;
-      }
-      table { margin-top: 6px; font-size: 0.9rem; }
-      th, td { padding: 6px; }
-      .code-box { margin-top: 6px; }
-      pre { padding: 8px; font-size: 0.8rem; line-height: 1.35; }
-      .note { margin-top: 6px; padding: 7px; }
+      /* Only avoid breaks inside small contained elements */
+      .stat-card, .flow li, .code-box { break-inside: avoid; page-break-inside: avoid; }
+      .section-label { margin: 10px 0 2px; }
+      h2 { font-size: 1.0rem; margin-bottom: 6px; padding-bottom: 4px; }
+      h3 { font-size: 0.92rem; margin: 8px 0 4px; }
+      p { margin: 3px 0; }
+      ul { margin-top: 4px; }
+      li { margin: 2px 0; }
+      .stats-grid { gap: 6px; margin-top: 8px; }
+      .stat-card { padding: 8px 10px; }
+      .stat-card .num { font-size: 1.25rem; }
+      .flow { margin-top: 6px; }
+      .flow li { margin: 4px 0; padding: 7px 10px 7px 38px; }
+      table { margin-top: 6px; font-size: 0.85rem; }
+      th, td { padding: 5px 7px; }
+      .code-box { margin-top: 7px; }
+      pre { padding: 8px 10px; font-size: 0.78rem; line-height: 1.35; }
+      .note { margin-top: 6px; padding: 7px 10px; }
+      .chart-row { gap: 8px; margin-top: 8px; grid-template-columns: 1fr 1fr; }
+      .chart-wrap { padding: 10px; }
+      .chart-title { margin-bottom: 6px; font-size: 0.82rem; }
       a { color: inherit; text-decoration: none; }
     }
   </style>
 </head>
 <body>
-  <main class="container">
-    <section class="hero">
-      <h1>AI Art Critic - Model Development and Adaptation</h1>
-      <p>
-        This document explains how the model was built step by step, starting from a simple baseline and moving toward a stronger final version.
-        Instead of changing everything at once, each experiment changed a small number of things so it stayed clear what helped and what did not.
-      </p>
-      <p>
-        For every stage, the report shows three things in plain terms: what was changed, why that change was made,
-        and how the change improved reliability, stability, or final accuracy.
-      </p>
-    </section>
+<main class="container">
 
-    <section class="panel">
-      <h2>1) Development process used in practice</h2>
-      <ol class="flow">
-        <li>First, a simple starting model was built so there was a clear baseline to compare with later tests.</li>
-        <li>After every run, training and validation scores were checked. In some tests, an extra test split was used for a more fair check.</li>
-        <li>Improvements were added step by step: better data handling first, then stronger models, then better training settings.</li>
-        <li>More complex methods were only added after the basics were working well, so it stayed clear what really helped.</li>
-        <li>Each run saved model checkpoints and history files, which made comparison easy and helped recover results when needed.</li>
-      </ol>
-      <p>
-        Overall, this was a structured process. Each change was tested, results were tracked, and decisions were based on evidence.
-      </p>
-    </section>
+  <!-- HERO -->
+  <section class="hero">
+    <h1>AI Art Critic - Model Development &amp; Adaptation</h1>
+    <p>
+      This document covers how I built, tested, and gradually improved the model across 9 experiments.
+      The focus is on <strong>model interaction &amp; adaptation</strong>: developing and validating an AI solution
+      step by step, making sure each change actually helped before moving on to the next one.
+    </p>
+    <p>
+      Each experiment changed one or two things at a time so it stayed clear what made the difference.
+      Security, privacy, ethics, and compliance are also covered at the end.
+    </p>
+    <div>
+      <span class="badge">9 experiments</span>
+      <span class="badge">ResNet to ViT</span>
+      <span class="badge">53% to 76.7% accuracy</span>
+      <span class="badge">Two-stage fine-tuning</span>
+      <span class="badge">Multitask learning</span>
+    </div>
+  </section>
 
-    <section class="panel">
-      <h2>2) Iteration summary across tests</h2>
-      <table>
-        <thead>
-          <tr>
-            <th>Iteration</th>
-            <th>Main model strategy</th>
-            <th>What was added or adapted</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr>
-            <td>Test 1-2</td>
-            <td>Starting baseline (ResNet)</td>
-            <td>Started with a pretrained model, basic image augmentation, standard train/validation loop, optional test split, and saving the best model result.</td>
-          </tr>
-          <tr>
-            <td>Test 3</td>
-            <td>Stronger CNN version</td>
-            <td>Switched to ResNet50, used stronger image augmentation, cleaned data more carefully, and tracked results more clearly.</td>
-          </tr>
-          <tr>
-            <td>Test 4</td>
-            <td>Accuracy-focused pipeline</td>
-            <td>Tried a stronger model option, trained in two stages (head first, then full model), handled class imbalance better, and tracked more detailed metrics.</td>
-          </tr>
-          <tr>
-            <td>Test 5</td>
-            <td>Fast and strong tuning</td>
-            <td>Training was improved so the model learns better without wasting time. The run could stop early when it stopped improving, and results were saved more clearly after each run.</td>
-          </tr>
-          <tr>
-            <td>Test 6</td>
-            <td>Final high-accuracy run</td>
-            <td>This run used a bigger and stronger model, larger images, and a longer training plan. It was mainly a final push to get the best possible accuracy from the project.</td>
-          </tr>
-        </tbody>
-      </table>
-    </section>
+  <!-- SECTION: OVERVIEW -->
+  <p class="section-label">Overview</p>
 
-    <section class="panel">
-      <h2>3) Core training pipeline</h2>
-      <p>
-        Even when the model type changed, the training flow stayed mostly the same.
-        This made it much easier to compare one test with another.
-      </p>
-      <p>
-        The order was simple and repeated each time:
-        load a pretrained model, adapt it to the style classes, choose loss and optimizer,
-        train for several epochs, check validation results, save the best version, and test a few sample predictions.
-      </p>
-      <p>
-        Keeping this structure fixed avoided confusion.
-        So when results improved, it was easier to see that the change came from a new technique,
-        not from a completely different pipeline.
-      </p>
+  <section class="panel">
+    <h2>1. Development Process</h2>
+    <p>
+      Rather than picking the most complex approach straight away, I started simple and worked up from there.
+      The idea was to always have a working baseline so I could tell whether a new change actually helped or made things worse.
+    </p>
 
-      <div class="code-box">
-        <div class="code-title">Baseline transfer learning setup</div>
-        <pre><code class="language-python">weights = models.ResNet18_Weights.DEFAULT
+    <ol class="flow">
+      <li>Built a simple starting model first, just to have something working that I could measure everything else against.</li>
+      <li>After every run I checked training loss, validation accuracy, and in later tests also top-5 accuracy and a separate test split. Having numbers to compare made decisions easier.</li>
+      <li>Improvements went in a specific order: get the data right first, then try a stronger model, then tune the training settings. Doing it in that order meant I knew what was actually causing improvements.</li>
+      <li>More advanced stuff like MixUp, EMA, gradient accumulation, and multitask learning only came in once the simpler things were working well. Adding complexity too early just makes bugs harder to find.</li>
+      <li>Every run saved checkpoints and a history file. That meant I could go back and compare any two experiments, and also recover results if something crashed.</li>
+    </ol>
+  </section>
+
+  <!-- KEY STATS -->
+  <section class="panel">
+    <h2>2. Key Numbers at a Glance</h2>
+    <div class="stats-grid">
+      <div class="stat-card blue">
+        <div class="num">53.0%</div>
+        <div class="label">Val accuracy, test 1 (ResNet18 baseline)</div>
+      </div>
+      <div class="stat-card green">
+        <div class="num">76.7%</div>
+        <div class="label">Val accuracy, test 8 (best so far)</div>
+      </div>
+      <div class="stat-card blue">
+        <div class="num">97.5%</div>
+        <div class="label">Top-5 val accuracy, test 8</div>
+      </div>
+      <div class="stat-card orange">
+        <div class="num">9</div>
+        <div class="label">Experiments run total</div>
+      </div>
+      <div class="stat-card purple">
+        <div class="num">74</div>
+        <div class="label">Best epoch in test 8 (longest run)</div>
+      </div>
+      <div class="stat-card teal">
+        <div class="num">3</div>
+        <div class="label">Task heads in test 9 (style + artist + emotion)</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- SECTION: ITERATION TABLE -->
+  <p class="section-label">Experiment Iterations</p>
+
+  <section class="panel">
+    <h2>3. What Changed in Each Test</h2>
+    <p>
+      Each test built on the previous one. The table below shows which model was used and what the main change was.
+      Later in this document each technique is explained in more detail.
+    </p>
+    <table>
+      <thead>
+        <tr>
+          <th>Test</th>
+          <th>Model</th>
+          <th>Main change from previous test</th>
+          <th>Val Top-1</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><span class="pill blue">Test 1</span></td>
+          <td>ResNet18</td>
+          <td>Starting baseline: pretrained model, basic augmentation, simple train/val loop, saves best checkpoint.</td>
+          <td>53.0%</td>
+        </tr>
+        <tr>
+          <td><span class="pill blue">Test 2</span></td>
+          <td>ResNet18</td>
+          <td>Lowered learning rate from 3e-4 to 1e-4, simplified augmentation to isolate the LR effect.</td>
+          <td>57.8%</td>
+        </tr>
+        <tr>
+          <td><span class="pill blue">Test 3</span></td>
+          <td>ResNet50</td>
+          <td>Bigger backbone (ResNet50 vs 18), stronger augmentation including RandomResizedCrop, ran for 10 epochs.</td>
+          <td>63.2%</td>
+        </tr>
+        <tr>
+          <td><span class="pill blue">Test 4</span></td>
+          <td>ConvNeXt-Tiny</td>
+          <td>Two-stage training (head first, then full model), label smoothing, EMA model averaging, MixUp/CutMix, class-weighted sampler.</td>
+          <td>66.9%</td>
+        </tr>
+        <tr>
+          <td><span class="pill blue">Test 5</span></td>
+          <td>ViT-B/16-384</td>
+          <td>Switched to a Vision Transformer backbone, larger input images (384px), test-time augmentation, same training pipeline as test 4.</td>
+          <td>69.3%</td>
+        </tr>
+        <tr>
+          <td><span class="pill blue">Test 6</span></td>
+          <td>ViT-B/16-384</td>
+          <td>Extended fine-tune to 24 epochs, added proper early stopping with patience of 8, gradient accumulation to simulate larger batches.</td>
+          <td>75.9%</td>
+        </tr>
+        <tr>
+          <td><span class="pill blue">Test 7</span></td>
+          <td>ViT-B/16-384</td>
+          <td>Longer training (56 fine-tune epochs), raised MixUp alpha to 0.6, lowered label smoothing to 0.08, more warmup epochs.</td>
+          <td>76.5%</td>
+        </tr>
+        <tr>
+          <td><span class="pill blue">Test 8</span></td>
+          <td>ViT-B/16-384</td>
+          <td>Longest run yet (72 fine-tune epochs), further tuned MixUp alpha (0.65) and label smoothing (0.07), patience raised to 16.</td>
+          <td class="best">76.7%</td>
+        </tr>
+        <tr>
+          <td><span class="pill purple">Test 9</span></td>
+          <td>ViT-B/16-384</td>
+          <td>Multitask: three prediction heads (style, artist, emotion), ArtEmis emotion data merged in, learnable loss weighting. Not yet run.</td>
+          <td>(pending)</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div class="chart-row" style="margin-top: 18px;">
+      <div class="chart-wrap full">
+        <div class="chart-title">Validation accuracy progression across tests 1 to 8</div>
+        <canvas id="chartAccuracyLine" height="120"></canvas>
+      </div>
+    </div>
+  </section>
+
+  <!-- SECTION: CORE PIPELINE -->
+  <p class="section-label">Training Pipeline</p>
+
+  <section class="panel">
+    <h2>4. Core Training Pipeline</h2>
+    <p>
+      Even as the model type changed between tests, the core training loop stayed the same every time.
+      That consistency made it easy to compare results fairly: if accuracy went up, I knew it was because of the specific thing I changed, not because the whole setup was different.
+    </p>
+    <p>
+      The pattern was always: load pretrained weights, swap out the classification head for 27 style classes, pick a loss function and optimizer, run the training loop, save the best checkpoint.
+    </p>
+
+    <h3>Transfer learning setup (tests 1-2, ResNet18 baseline)</h3>
+    <div class="code-box">
+      <div class="code-title">Baseline: load pretrained ResNet18 and replace the head</div>
+      <pre><code class="language-python">weights = models.ResNet18_Weights.DEFAULT
 model = models.resnet18(weights=weights)
+
+# Replace the last layer with one that outputs 27 classes (one per art style)
 in_features = model.fc.in_features
 model.fc = nn.Linear(in_features, num_classes)
 model = model.to(device)
 
 criterion = nn.CrossEntropyLoss()
 optimizer = torch.optim.Adam(model.parameters(), lr=1e-4)</code></pre>
-      </div>
+    </div>
 
-      <div class="code-box">
-        <div class="code-title">Training + validation loop pattern</div>
-        <pre><code class="language-python">def run_one_epoch(model, loader, criterion, optimizer=None):
+    <h3>Train/validation loop</h3>
+    <p>
+      The same loop function was used in every test. Passing an optimizer makes it train, leaving it out makes it evaluate. This avoids having two separate copies of nearly identical code.
+    </p>
+    <div class="code-box">
+      <div class="code-title">Single function handles both training and evaluation</div>
+      <pre><code class="language-python">def run_one_epoch(model, loader, criterion, optimizer=None):
     is_train = optimizer is not None
     model.train() if is_train else model.eval()
-    total_loss = 0.0
-    total_correct = 0
-    total_samples = 0
+    total_loss, total_correct, total_samples = 0.0, 0, 0
 
     for images, labels in loader:
-        images = images.to(device)
-        labels = labels.to(device)
+        images, labels = images.to(device), labels.to(device)
         with torch.set_grad_enabled(is_train):
             outputs = model(images)
             loss = criterion(outputs, labels)
@@ -302,138 +512,20 @@ optimizer = torch.optim.Adam(model.parameters(), lr=1e-4)</code></pre>
                 optimizer.step()
 
         preds = outputs.argmax(dim=1)
-        total_loss += loss.item() * labels.size(0)
+        total_loss    += loss.item() * labels.size(0)
         total_correct += (preds == labels).sum().item()
-        total_samples += labels.size(0)</code></pre>
-      </div>
-    </section>
+        total_samples += labels.size(0)
 
-    <section class="panel">
-      <h2>4) Adaptation techniques that improved the system</h2>
-      <ul>
-        <li><strong>Stronger model choices:</strong> the project moved from smaller models to stronger ones, so the model could learn harder style differences better.</li>
-        <li><strong>Two-step training:</strong> first train the final layer, then train the full model. This made training more stable.</li>
-        <li><strong>Better balance between classes:</strong> training gave extra help to underrepresented styles so they were not ignored.</li>
-        <li><strong>Better generalization:</strong> stronger image variation and regularization methods were used so the model works better on new images, not only training images.</li>
-        <li><strong>Better training control:</strong> learning rate control and memory-friendly settings were used to keep training stable and improve final accuracy.</li>
-      </ul>
-      <p>
-        The main idea was to add improvements in the right order.
-        First make the baseline stable, then add stronger methods one by one and check if they actually help.
-      </p>
+    return total_loss / total_samples, total_correct / total_samples</code></pre>
+    </div>
 
-      <div class="code-box">
-        <div class="code-title">Freeze/unfreeze strategy (two-stage fine-tuning)</div>
-        <pre><code class="language-python">def freeze_backbone(model, model_name: str):
-    for p in model.parameters():
-        p.requires_grad = False
-    for p in get_classifier_parameters(model, model_name):
-        p.requires_grad = True
-
-def unfreeze_all(model):
-    for p in model.parameters():
-        p.requires_grad = True</code></pre>
-      </div>
-
-      <div class="code-box">
-        <div class="code-title">Highest-accuracy run configuration (test6 code)</div>
-        <pre><code class="language-python">@dataclass
-class TrainConfig:
-    model_name: str = "vit_base_patch16_384.augreg_in21k_ft_in1k"
-    image_size: int = 384
-    batch_size: int = 12
-    effective_batch_size: int = 48
-    head_epochs: int = 2
-    ft_epochs: int = 24
-    patience: int = 8
-    warmup_epochs: int = 2
-    head_lr: float = 6e-4
-    ft_backbone_lr: float = 1e-5
-    ft_head_lr: float = 3e-5
-    weight_decay: float = 8e-5
-    mixup_alpha: float = 0.4
-    cutmix_alpha: float = 0.8
-    mix_probability: float = 0.75
-    label_smoothing: float = 0.12</code></pre>
-      </div>
-    </section>
-
-    <section class="panel">
-      <h2>5) Validation, reliability, and experiment control</h2>
-      <ol class="flow">
-        <li>Each run tracked basic performance numbers, and later runs tracked extra metrics for a clearer quality check.</li>
-        <li>The best saved model was chosen from validation results and used for final evaluation.</li>
-        <li>When possible, a separate test check was also used to confirm the model was not just memorizing validation behavior.</li>
-        <li>Run history and summary files were saved so experiments could be compared later and recovered if needed.</li>
-      </ol>
-      <p>
-        This made the process controlled and fair: results were not only shown once, they were saved and compared across tests.
-      </p>
-      <p>
-        Results so far (up to test 5) show steady improvement from the baseline to the stronger pipeline.
-        The biggest jump comes from the later experiments where model capacity and training strategy were both improved.
-      </p>
-      <table>
-        <thead>
-          <tr>
-            <th>Test</th>
-            <th>Model</th>
-            <th>Validation Top-1</th>
-            <th>Validation Top-5</th>
-            <th>Test Top-1</th>
-            <th>Test Top-5</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr>
-            <td>Test 1</td>
-            <td>ResNet18</td>
-            <td>53.0%</td>
-            <td>53.0%</td>
-            <td>53.0%</td>
-            <td>53.0%</td>
-          </tr>
-          <tr>
-            <td>Test 2</td>
-            <td>ResNet18</td>
-            <td>57.8%</td>
-            <td>57.8%</td>
-            <td>57.7%</td>
-            <td>57.7%</td>
-          </tr>
-          <tr>
-            <td>Test 3</td>
-            <td>ResNet50</td>
-            <td>63.2%</td>
-            <td>63.2%</td>
-            <td>63.2%</td>
-            <td>63.2%</td>
-          </tr>
-          <tr>
-            <td>Test 4</td>
-            <td>ResNet50</td>
-            <td>66.9%</td>
-            <td>76.6%</td>
-            <td>65.4%</td>
-            <td>75.8%</td>
-          </tr>
-          <tr>
-            <td>Test 5</td>
-            <td>ViT-Base Patch16-384</td>
-            <td>69.3%</td>
-            <td>79.2%</td>
-            <td>68.1%</td>
-            <td>77.8%</td>
-          </tr>
-        </tbody>
-      </table>
-      <p>
-        Overall, scores improved because each new test fixed a specific weak point: data quality, model strength, or training stability.
-      </p>
-
-      <div class="code-box">
-        <div class="code-title">Top-k metric tracking</div>
-        <pre><code class="language-python">def topk_accuracies(logits, targets, topk=(1, 5)):
+    <h3>Top-k accuracy tracking</h3>
+    <p>
+      From test 4 onwards I also tracked top-5 accuracy. That means: was the correct style in the model's top 5 guesses? For art style classification with 27 classes that can be quite forgiving, but it's still useful to see how close the model gets when it's wrong.
+    </p>
+    <div class="code-box">
+      <div class="code-title">Computing top-1 and top-5 accuracy from model outputs</div>
+      <pre><code class="language-python">def topk_accuracies(logits, targets, topk=(1, 5)):
     max_k = min(max(topk), logits.size(1))
     _, pred = logits.topk(max_k, dim=1, largest=True, sorted=True)
     pred = pred.t()
@@ -445,75 +537,538 @@ class TrainConfig:
         correct_k = correct[:kk].reshape(-1).float().sum(0)
         results.append(correct_k.item() / targets.size(0))
     return results</code></pre>
+    </div>
+  </section>
+
+  <!-- SECTION: ADAPTATION TECHNIQUES -->
+  <p class="section-label">Adaptation Techniques</p>
+
+  <section class="panel">
+    <h2>5. Two-Stage Fine-Tuning</h2>
+    <p>
+      From test 4 onwards I switched to a two-stage training approach. The idea is that a pretrained model already knows a lot about images from ImageNet training, and if you immediately update all the weights with a high learning rate you can destroy that knowledge.
+    </p>
+    <p>
+      So the first stage only trains the new classification head while everything else is frozen. Once the head has settled, stage two unfreezes the whole model and fine-tunes everything with a much lower learning rate.
+    </p>
+
+    <div class="code-box">
+      <div class="code-title">Freeze backbone, then unfreeze for full fine-tuning</div>
+      <pre><code class="language-python">def freeze_backbone(model, model_name: str):
+    # Lock all weights
+    for p in model.parameters():
+        p.requires_grad = False
+    # Unlock only the classification head
+    for p in get_classifier_parameters(model, model_name):
+        p.requires_grad = True
+
+def unfreeze_all(model):
+    for p in model.parameters():
+        p.requires_grad = True
+
+# Stage 1: train head only (5 epochs)
+freeze_backbone(model, cfg.model_name)
+optimizer_head = torch.optim.AdamW(
+    filter(lambda p: p.requires_grad, model.parameters()),
+    lr=cfg.head_lr
+)
+
+# Stage 2: fine-tune everything with lower learning rates
+unfreeze_all(model)
+optimizer_ft = torch.optim.AdamW([
+    {"params": backbone_params, "lr": cfg.ft_backbone_lr},
+    {"params": head_params,     "lr": cfg.ft_head_lr},
+])</code></pre>
+    </div>
+
+    <div class="note">
+      The backbone and head get different learning rates in stage 2. The backbone gets 1e-5 (very small, don't overwrite what it already learned) and the head gets 3e-5 (a bit higher, it still has more to learn).
+    </div>
+  </section>
+
+  <section class="panel">
+    <h2>6. MixUp, CutMix, and Label Smoothing</h2>
+    <p>
+      These three techniques all work on the same problem: stopping the model from being overconfident on the training data.
+      If you just train on raw images and hard labels, the model can end up very certain about training examples but wrong on anything slightly different. These techniques make training a bit harder on purpose so the model learns more general patterns.
+    </p>
+    <ul>
+      <li><strong>MixUp:</strong> blends two images together and creates a blended label. For example, 60% Impressionism + 40% Baroque creates a mixed image and a target of [0.6, 0.4] instead of [1.0, 0.0].</li>
+      <li><strong>CutMix:</strong> pastes a rectangle from one image onto another. Similar idea but it keeps hard edges instead of blending pixels, so the model still learns local texture details.</li>
+      <li><strong>Label smoothing:</strong> instead of a "1.0" label for the correct class, it uses something like 0.92 and spreads the remaining 0.08 across other classes. This makes the model slightly less certain by design.</li>
+    </ul>
+
+    <div class="code-box">
+      <div class="code-title">Training config from test 8 (best run)</div>
+      <pre><code class="language-python">@dataclass
+class TrainConfig:
+    model_name:           str   = "vit_base_patch16_384.augreg_in21k_ft_in1k"
+    image_size:           int   = 384
+    batch_size:           int   = 12
+    effective_batch_size: int   = 48     # 4x gradient accumulation
+    head_epochs:          int   = 6
+    ft_epochs:            int   = 72
+    patience:             int   = 16     # early stopping
+    warmup_epochs:        int   = 4
+    head_lr:              float = 6e-4
+    ft_backbone_lr:       float = 1e-5
+    ft_head_lr:           float = 3e-5
+    weight_decay:         float = 8e-5
+    mixup_alpha:          float = 0.65
+    cutmix_alpha:         float = 1.0
+    mix_probability:      float = 0.75   # 75% of batches get mixed
+    label_smoothing:      float = 0.07
+    ema_decay:            float = 0.9997
+    grad_clip_norm:       float = 1.0
+    tta:                  bool  = True</code></pre>
+    </div>
+  </section>
+
+  <section class="panel">
+    <h2>7. Gradient Accumulation, EMA, and Early Stopping</h2>
+    <p>
+      Three more techniques that all deal with training stability.
+    </p>
+
+    <h3>Gradient accumulation</h3>
+    <p>
+      The ViT model at 384px input is quite large. I couldn't fit a big batch in memory, so I used a batch size of 12 but accumulated gradients over 4 steps before updating the weights. That means the model effectively trains on 48 images at once, which is more stable than 12. The weights only update every 4 steps.
+    </p>
+
+    <div class="code-box">
+      <div class="code-title">Gradient accumulation over 4 steps (effective batch = 48)</div>
+      <pre><code class="language-python">accum_steps = cfg.effective_batch_size // cfg.batch_size  # = 4
+
+optimizer.zero_grad()
+for step, (images, labels) in enumerate(train_loader):
+    images, labels = images.to(device), labels.to(device)
+    images, soft_targets = mixup_cutmix(images, labels, ...)
+
+    with torch.cuda.amp.autocast():
+        logits = model(images)
+        loss = criterion(logits, soft_targets) / accum_steps  # scale loss
+
+    scaler.scale(loss).backward()
+
+    if (step + 1) % accum_steps == 0:
+        scaler.unscale_(optimizer)
+        torch.nn.utils.clip_grad_norm_(model.parameters(), cfg.grad_clip_norm)
+        scaler.step(optimizer)
+        scaler.update()
+        optimizer.zero_grad()
+        ema.update(model)  # update EMA weights after each real step</code></pre>
+    </div>
+
+    <h3>EMA (Exponential Moving Average)</h3>
+    <p>
+      Instead of always using the model from the most recent training step (which can be noisy), EMA keeps a smoothed version of the weights that slowly follows the training weights. At evaluation time I used the EMA weights instead. The result is usually a bit more stable and often slightly more accurate.
+    </p>
+
+    <h3>Early stopping</h3>
+    <p>
+      I set a patience value in each test. If the validation accuracy didn't improve for that many consecutive epochs, training stopped automatically. This prevented wasting time on epochs that weren't helping, and also stopped the model from starting to overfit.
+    </p>
+
+    <div class="code-box">
+      <div class="code-title">Early stopping logic</div>
+      <pre><code class="language-python">best_val_top1 = 0.0
+patience_counter = 0
+
+for epoch in range(total_epochs):
+    val_top1, val_top5 = evaluate(ema_model, val_loader)
+
+    if val_top1 > best_val_top1:
+        best_val_top1 = val_top1
+        patience_counter = 0
+        torch.save(ema_model.state_dict(), checkpoint_path)  # save best
+    else:
+        patience_counter += 1
+        if patience_counter >= cfg.patience:
+            print(f"Early stopping at epoch {epoch}")
+            break</code></pre>
+    </div>
+  </section>
+
+  <!-- SECTION: TEST 9 -->
+  <p class="section-label">Test 9: Multitask Learning</p>
+
+  <section class="panel">
+    <h2>8. Test 9: Training Three Tasks at Once</h2>
+    <p>
+      Test 9 is the most ambitious experiment. Instead of just predicting art style, the model now predicts style, artist, and emotion all from the same image, using the same backbone network. The idea is that learning all three things at once should push the backbone to pick up on more visual detail than it would from style labels alone.
+    </p>
+    <ul>
+      <li><strong>Style head:</strong> 27 art style classes (Impressionism, Cubism, etc.), same as every previous test</li>
+      <li><strong>Artist head:</strong> predicts which artist made the painting, extracted from the WikiArt folder structure</li>
+      <li><strong>Emotion head:</strong> 7 emotion classes (anger, disgust, fear, joy, sadness, surprise, trust), from the ArtEmis dataset</li>
+    </ul>
+
+    <h3>Three-head architecture</h3>
+    <p>
+      Each head is a small MLP (two linear layers with a normalisation layer and activation in between) connected to the same shared ViT backbone. The backbone outputs one feature vector per image, and all three heads read from that same vector.
+    </p>
+
+    <div class="code-box">
+      <div class="code-title">Building the three task heads on top of a shared backbone</div>
+      <pre><code class="language-python">class MultiTaskModel(nn.Module):
+    def __init__(self, backbone, feat_dim, n_style, n_artist, n_emotion):
+        super().__init__()
+        self.backbone = backbone
+
+        def make_head(out_dim):
+            return nn.Sequential(
+                nn.Linear(feat_dim, feat_dim),
+                nn.BatchNorm1d(feat_dim),
+                nn.GELU(),
+                nn.Linear(feat_dim, out_dim)
+            )
+
+        self.style_head   = make_head(n_style)
+        self.artist_head  = make_head(n_artist)
+        self.emotion_head = make_head(n_emotion)
+
+        # Learnable weights for each task's loss contribution
+        self.log_var_style   = nn.Parameter(torch.zeros(1))
+        self.log_var_artist  = nn.Parameter(torch.zeros(1))
+        self.log_var_emotion = nn.Parameter(torch.zeros(1))
+
+    def forward(self, x):
+        features = self.backbone(x)
+        return (
+            self.style_head(features),
+            self.artist_head(features),
+            self.emotion_head(features),
+        )</code></pre>
+    </div>
+
+    <h3>Handling missing emotion labels</h3>
+    <p>
+      Not every WikiArt image has an emotion annotation in ArtEmis. Rather than throwing those images away, I kept them and just skipped the emotion loss for that row. Emotion loss is only calculated where a valid emotion label exists.
+    </p>
+
+    <div class="code-box">
+      <div class="code-title">Combine three losses with learnable uncertainty weighting</div>
+      <pre><code class="language-python"># Compute individual losses
+style_loss  = ce_style(style_logits, style_labels)
+artist_loss = ce_artist(artist_logits, artist_labels)
+
+# Only compute emotion loss where annotation exists
+if has_emotion.any():
+    emotion_loss = ce_emotion(
+        emotion_logits[has_emotion],
+        emotion_labels[has_emotion]
+    )
+else:
+    emotion_loss = torch.tensor(0.0, device=device)
+
+# Uncertainty-weighted combination (learned during training)
+loss_total = (
+    0.5 * torch.exp(-model.log_var_style)   * style_loss   + 0.5 * model.log_var_style   +
+    0.5 * torch.exp(-model.log_var_artist)  * artist_loss  + 0.5 * model.log_var_artist  +
+    0.5 * torch.exp(-model.log_var_emotion) * emotion_loss + 0.5 * model.log_var_emotion
+)</code></pre>
+    </div>
+
+    <table>
+      <thead><tr><th>Head</th><th>Output classes</th><th>Loss applied when</th><th>Loss weight</th></tr></thead>
+      <tbody>
+        <tr><td><code>style_head</code></td><td>27</td><td>Every batch</td><td>Learned (log_var_style)</td></tr>
+        <tr><td><code>artist_head</code></td><td>N artists</td><td>Every batch</td><td>Learned (log_var_artist)</td></tr>
+        <tr><td><code>emotion_head</code></td><td>7</td><td>Only where emotion label exists</td><td>0.7 fixed (or learned)</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <!-- SECTION: RESULTS -->
+  <p class="section-label">Results</p>
+
+  <section class="panel">
+    <h2>9. Full Results Across All Tests</h2>
+    <p>
+      Here are the actual numbers from every test. Top-1 accuracy means the model's first guess was correct. Top-5 means the correct style was somewhere in the model's 5 best guesses. For a 27-class problem, top-5 at 97.5% is quite strong.
+    </p>
+
+    <table>
+      <thead>
+        <tr>
+          <th>Test</th>
+          <th>Model</th>
+          <th>Val Top-1</th>
+          <th>Val Top-5</th>
+          <th>Test Top-1</th>
+          <th>Test Top-5</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><span class="pill blue">Test 1</span></td>
+          <td>ResNet18</td>
+          <td>53.0%</td>
+          <td>n/a</td>
+          <td>53.0%</td>
+          <td>n/a</td>
+        </tr>
+        <tr>
+          <td><span class="pill blue">Test 2</span></td>
+          <td>ResNet18</td>
+          <td>57.8%</td>
+          <td>n/a</td>
+          <td>57.7%</td>
+          <td>n/a</td>
+        </tr>
+        <tr>
+          <td><span class="pill blue">Test 3</span></td>
+          <td>ResNet50</td>
+          <td>63.2%</td>
+          <td>n/a</td>
+          <td>63.2%</td>
+          <td>n/a</td>
+        </tr>
+        <tr>
+          <td><span class="pill blue">Test 4</span></td>
+          <td>ConvNeXt-Tiny</td>
+          <td>66.9%</td>
+          <td>76.6%</td>
+          <td>65.4%</td>
+          <td>75.8%</td>
+        </tr>
+        <tr>
+          <td><span class="pill blue">Test 5</span></td>
+          <td>ViT-B/16-384</td>
+          <td>69.3%</td>
+          <td>79.2%</td>
+          <td>68.1%</td>
+          <td>77.8%</td>
+        </tr>
+        <tr>
+          <td><span class="pill blue">Test 6</span></td>
+          <td>ViT-B/16-384</td>
+          <td>75.9%</td>
+          <td>97.6%</td>
+          <td>74.9%</td>
+          <td>97.2%</td>
+        </tr>
+        <tr>
+          <td><span class="pill blue">Test 7</span></td>
+          <td>ViT-B/16-384</td>
+          <td>76.5%</td>
+          <td>97.6%</td>
+          <td>75.8%</td>
+          <td>97.2%</td>
+        </tr>
+        <tr>
+          <td><span class="pill blue">Test 8</span></td>
+          <td>ViT-B/16-384</td>
+          <td class="best">76.7%</td>
+          <td class="best">97.5%</td>
+          <td class="best">75.9%</td>
+          <td class="best">96.9%</td>
+        </tr>
+        <tr>
+          <td><span class="pill purple">Test 9</span></td>
+          <td>ViT-B/16-384 (multitask)</td>
+          <td colspan="4" style="color:#6b7280; font-style:italic;">Not yet run</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div class="chart-row" style="margin-top: 18px;">
+      <div class="chart-wrap">
+        <div class="chart-title">Top-1 vs Top-5 val accuracy by test</div>
+        <canvas id="chartTop1Top5" height="260"></canvas>
       </div>
-    </section>
+      <div class="chart-wrap">
+        <div class="chart-title">Accuracy gain per test (Top-1, vs test 1 baseline)</div>
+        <canvas id="chartGain" height="260"></canvas>
+      </div>
+    </div>
 
-    <section class="panel">
-      <h2>6) Integration readiness and responsible deployment checks</h2>
-      <p>
-        The model part is ready to be connected to an app.
-        You can train it, save it, load it again later, and use it to predict the style of a new uploaded painting image.
-      </p>
-      <p>
-        But a real app also needs safety rules around uploads and stored data.
-        The table below shows this in an easy way: what is already handled in the notebooks, and what must still be enforced in the backend.
-      </p>
-      <table>
-        <thead>
-          <tr>
-            <th>Area</th>
-            <th>Implemented in notebooks</th>
-            <th>What still needs to be added in the app/backend</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr>
-            <td>Security</td>
-            <td>The prediction flow is stable: load model, process image, return result.</td>
-            <td>Only allow real image files, block files that are too large, and clean file names so nobody can upload harmful files.</td>
-          </tr>
-          <tr>
-            <td>Privacy</td>
-            <td>The model does not need personal profile information to classify art style.</td>
-            <td>Do not keep user uploads longer than needed, and do not store unnecessary personal details in logs.</td>
-          </tr>
-          <tr>
-            <td>Ethics</td>
-            <td>The style labels are clear and evaluation is tracked, so users can see what the model was trained to predict.</td>
-            <td>Show confidence with predictions and clearly say when the model is unsure, especially for very similar styles.</td>
-          </tr>
-          <tr>
-            <td>Compliance</td>
-            <td>Results, checkpoints, and experiment files are saved in an organized way.</td>
-            <td>Keep clear records of which dataset and model version are used, so results can be traced later if needed.</td>
-          </tr>
-        </tbody>
-      </table>
-      <p>
-        Short version: the model is ready, but the app still needs upload rules and clear documentation.
-        That is what makes the final deployed system safe, understandable, and reliable for real users.
-      </p>
-    </section>
+    <div class="note">
+      The biggest single jump was between test 5 and test 6, where switching to a longer training run with early stopping added about 6.5 percentage points. Going from test 1 to test 8 overall is a 23.7 percentage point improvement.
+    </div>
+  </section>
 
-    <section class="panel">
-      <h2>7) Conclusion</h2>
-      <p>
-        The model was improved step by step instead of changing everything at once.
-        That made it easier to see what worked and why the scores improved.
-      </p>
-      <p>
-        By the later tests, the project had a stronger model setup, better training techniques,
-        and clearer tracking of results.
-        In practice, this means the model became more accurate, more stable, and easier to use in a real app.
-      </p>
-    </section>
-  </main>
+  <!-- SECTION: SECURITY / ETHICS -->
+  <p class="section-label">Responsible Development</p>
 
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.10.0/highlight.min.js"></script>
-  <script>
-    if (window.hljs) {
-      window.hljs.highlightAll();
+  <section class="panel">
+    <h2>10. Security, Privacy, Ethics, and Compliance</h2>
+    <p>
+      The model training side is well in hand, but if this ever turns into a real app where users upload images, there are extra things that need to be in place. Here's an honest breakdown of what's already covered in the notebooks and what would still need to be built.
+    </p>
+    <table>
+      <thead>
+        <tr>
+          <th>Area</th>
+          <th>What's already handled</th>
+          <th>What still needs to be added</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><strong>Security</strong></td>
+          <td>The prediction flow is clean and isolated: load model, process image, return a result. No external calls, no file writes during inference.</td>
+          <td>For uploads: validate that the file is actually an image (check MIME type and file header, not just the extension), limit file size, sanitise filenames so a crafted filename can't cause path traversal issues.</td>
+        </tr>
+        <tr>
+          <td><strong>Privacy</strong></td>
+          <td>The model doesn't need any personal data to work. It only looks at pixel values. Training data came from publicly available art datasets (WikiArt, ArtBench, ArtEmis).</td>
+          <td>For a real app: don't store uploaded images longer than needed, make it clear to users what happens to their image, don't log identifiable details alongside uploaded content.</td>
+        </tr>
+        <tr>
+          <td><strong>Ethics</strong></td>
+          <td>All 27 style labels are clearly defined and based on the WikiArt folder structure. The model's training history and evaluation numbers are fully documented. There are no hidden labels or undocumented classes.</td>
+          <td>Predictions should come with a confidence score so users know when the model is unsure. Some styles are visually very similar (e.g. Impressionism vs Post-Impressionism) and the model should communicate that uncertainty rather than always committing to one answer.</td>
+        </tr>
+        <tr>
+          <td><strong>Compliance</strong></td>
+          <td>Checkpoints, training configs, and accuracy history are saved for every run. Every experiment is in a numbered notebook so the full history is traceable. All datasets used have clear origins and are research-use datasets.</td>
+          <td>For deployment: document which dataset version and model checkpoint is running in production. Keep a log of model updates so it's clear when the live model changed and what changed with it.</td>
+        </tr>
+      </tbody>
+    </table>
+  </section>
+
+  <!-- SECTION: CONCLUSION -->
+  <section class="panel">
+    <h2>11. Conclusion</h2>
+    <p>
+      Going from 53% to 76.7% accuracy across 8 experiments wasn't one big leap, it was a bunch of smaller ones that added up.
+      The early tests were mostly about getting the pipeline right: proper data loading, a working training loop, saving checkpoints.
+      Once that was stable, it made sense to try a stronger model (ViT instead of ResNet), and once that was in place, the focus shifted to getting the most out of training through longer runs, better augmentation, and smarter loss functions.
+    </p>
+    <p>
+      The jump from test 5 to test 6 was the biggest single improvement, which came mostly from just training longer with proper early stopping rather than any exotic technique. That's a good reminder that boring things like training duration and patience settings often matter more than the fancy stuff.
+    </p>
+    <p>
+      Test 9 is still to run, but the data prep for it is done. If the multitask approach works as expected, the style accuracy should should improve a bit.
+    </p>
+  </section>
+
+</main>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.10.0/highlight.min.js"></script>
+<script>
+  if (window.hljs) window.hljs.highlightAll();
+
+  Chart.defaults.font.family = "'Segoe UI', Roboto, Arial, sans-serif";
+  Chart.defaults.font.size = 12;
+  Chart.defaults.color = "#4b5563";
+
+  const tests = ["T1", "T2", "T3", "T4", "T5", "T6", "T7", "T8"];
+
+  // Chart 1: Accuracy progression line chart (already in section 3)
+  new Chart(document.getElementById("chartAccuracyLine"), {
+    type: "line",
+    data: {
+      labels: tests,
+      datasets: [
+        {
+          label: "Val Top-1 accuracy",
+          data: [53.0, 57.8, 63.2, 66.9, 69.3, 75.9, 76.5, 76.7],
+          borderColor: "#1d4ed8",
+          backgroundColor: "rgba(29,78,216,0.08)",
+          pointBackgroundColor: "#1d4ed8",
+          tension: 0.3,
+          fill: true,
+          borderWidth: 2.5,
+          pointRadius: 5,
+        }
+      ]
+    },
+    options: {
+      responsive: true,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          callbacks: { label: ctx => " " + ctx.parsed.y.toFixed(1) + "%" }
+        }
+      },
+      scales: {
+        y: {
+          min: 45,
+          max: 85,
+          ticks: { callback: v => v + "%" },
+          grid: { color: "#e5e7eb" }
+        },
+        x: { grid: { display: false } }
+      }
     }
-  </script>
+  });
+
+  // Chart 2: Top-1 vs Top-5 grouped bar (tests 4-8 since top-5 was only tracked from test 4)
+  new Chart(document.getElementById("chartTop1Top5"), {
+    type: "bar",
+    data: {
+      labels: ["T1", "T2", "T3", "T4", "T5", "T6", "T7", "T8"],
+      datasets: [
+        {
+          label: "Top-1",
+          data: [53.0, 57.8, 63.2, 66.9, 69.3, 75.9, 76.5, 76.7],
+          backgroundColor: "#3b82f6",
+          borderRadius: 5,
+          barPercentage: 0.6,
+        },
+        {
+          label: "Top-5",
+          data: [null, null, null, 76.6, 79.2, 97.6, 97.6, 97.5],
+          backgroundColor: "#93c5fd",
+          borderRadius: 5,
+          barPercentage: 0.6,
+        }
+      ]
+    },
+    options: {
+      responsive: true,
+      plugins: {
+        legend: { position: "bottom", labels: { padding: 12, boxWidth: 13, boxHeight: 13 } },
+        tooltip: { callbacks: { label: ctx => " " + ctx.dataset.label + ": " + (ctx.parsed.y ?? "n/a") + "%" } }
+      },
+      scales: {
+        y: {
+          min: 0,
+          max: 100,
+          ticks: { callback: v => v + "%" },
+          grid: { color: "#e5e7eb" }
+        },
+        x: { grid: { display: false } }
+      }
+    }
+  });
+
+  // Chart 3: Accuracy gain vs baseline
+  new Chart(document.getElementById("chartGain"), {
+    type: "bar",
+    data: {
+      labels: tests,
+      datasets: [{
+        label: "Gain vs test 1 baseline (%)",
+        data: [0, 4.8, 10.2, 13.9, 16.3, 22.9, 23.5, 23.7],
+        backgroundColor: [
+          "#dbeafe","#bfdbfe","#93c5fd","#60a5fa",
+          "#3b82f6","#2563eb","#1d4ed8","#1e40af"
+        ],
+        borderRadius: 5,
+        borderSkipped: false,
+      }]
+    },
+    options: {
+      responsive: true,
+      plugins: {
+        legend: { display: false },
+        tooltip: { callbacks: { label: ctx => " +" + ctx.parsed.y.toFixed(1) + " pp" } }
+      },
+      scales: {
+        y: {
+          min: 0,
+          max: 28,
+          ticks: { callback: v => "+" + v + " pp" },
+          grid: { color: "#e5e7eb" }
+        },
+        x: { grid: { display: false } }
+      }
+    }
+  });
+</script>
 </body>
 </html>

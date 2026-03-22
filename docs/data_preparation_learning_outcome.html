@@ -6,15 +6,22 @@
   <title>AI Art Critic - Data Preparation Report</title>
   <link rel="preconnect" href="https://cdnjs.cloudflare.com" />
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.10.0/styles/github.min.css" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
   <style>
     :root {
-      --bg: #f3f6fb;
+      --bg: #f0f4fb;
       --panel: #ffffff;
       --text: #1f2937;
       --muted: #4b5563;
       --line: #dbe3ef;
       --accent: #1d4ed8;
-      --soft: #eff6ff;
+      --accent-soft: #eff6ff;
+      --green: #16a34a;
+      --green-soft: #f0fdf4;
+      --orange: #ea580c;
+      --orange-soft: #fff7ed;
+      --purple: #7c3aed;
+      --purple-soft: #f5f3ff;
     }
 
     * { box-sizing: border-box; }
@@ -24,236 +31,441 @@
       font-family: "Segoe UI", Roboto, Arial, sans-serif;
       color: var(--text);
       background: var(--bg);
-      line-height: 1.6;
+      line-height: 1.65;
+      font-size: 0.97rem;
     }
 
     .container {
-      max-width: 980px;
-      margin: 24px auto;
-      padding: 0 16px 24px;
+      max-width: 1020px;
+      margin: 28px auto;
+      padding: 0 18px 32px;
     }
 
+    /* ── Hero ── */
     .hero {
-      background: linear-gradient(145deg, #eaf2ff, #ffffff);
-      border: 1px solid var(--line);
-      border-radius: 14px;
-      padding: 18px;
-      margin-bottom: 14px;
+      background: linear-gradient(135deg, #1d4ed8 0%, #3b82f6 60%, #60a5fa 100%);
+      color: #fff;
+      border-radius: 16px;
+      padding: 28px 30px 22px;
+      margin-bottom: 18px;
+    }
+    .hero h1 { font-size: 1.8rem; margin: 0 0 8px; color: #fff; }
+    .hero p  { margin: 5px 0; opacity: 0.92; }
+    .hero .badge {
+      display: inline-block;
+      background: rgba(255,255,255,0.18);
+      border: 1px solid rgba(255,255,255,0.35);
+      border-radius: 20px;
+      padding: 3px 12px;
+      font-size: 0.82rem;
+      margin: 6px 4px 0 0;
     }
 
-    h1, h2, h3 { line-height: 1.25; margin-top: 0; }
-    h1 { font-size: 1.75rem; margin-bottom: 8px; }
-    h2 { font-size: 1.22rem; margin-bottom: 8px; color: #0f2f7a; }
-    h3 { font-size: 1.02rem; margin-bottom: 6px; color: #1d4ed8; }
-
-    p { margin: 7px 0; }
-
+    /* ── Panel ── */
     .panel {
       background: var(--panel);
       border: 1px solid var(--line);
-      border-radius: 12px;
-      padding: 15px;
-      margin-top: 12px;
+      border-radius: 14px;
+      padding: 20px 22px;
+      margin-top: 16px;
     }
 
+    h2 {
+      font-size: 1.18rem;
+      color: #0f2f7a;
+      margin: 0 0 10px;
+      border-bottom: 2px solid var(--line);
+      padding-bottom: 6px;
+    }
+    h3 { font-size: 1.0rem; color: #1d4ed8; margin: 14px 0 5px; }
+    p  { margin: 6px 0; }
+
+    /* ── Stat cards ── */
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 12px;
+      margin-top: 12px;
+    }
+    .stat-card {
+      border-radius: 11px;
+      padding: 14px 16px;
+      border: 1px solid var(--line);
+    }
+    .stat-card.blue   { background: var(--accent-soft);  border-color: #bfdbfe; }
+    .stat-card.green  { background: var(--green-soft);   border-color: #bbf7d0; }
+    .stat-card.orange { background: var(--orange-soft);  border-color: #fed7aa; }
+    .stat-card.purple { background: var(--purple-soft);  border-color: #ddd6fe; }
+    .stat-card .num {
+      font-size: 1.6rem;
+      font-weight: 700;
+      line-height: 1.1;
+      color: var(--text);
+    }
+    .stat-card .label { font-size: 0.82rem; color: var(--muted); margin-top: 2px; }
+
+    /* ── Flow list ── */
     .flow {
-      margin: 8px 0 0 0;
+      margin: 10px 0 0;
       padding: 0;
       list-style: none;
       counter-reset: step;
     }
-
     .flow li {
       counter-increment: step;
       background: #fafcff;
       border: 1px solid #e4eaf5;
       border-radius: 10px;
-      padding: 10px 12px;
+      padding: 10px 12px 10px 44px;
       margin: 8px 0;
       position: relative;
-      padding-left: 42px;
     }
-
     .flow li::before {
       content: counter(step);
       position: absolute;
       left: 12px;
       top: 10px;
-      width: 22px;
-      height: 22px;
+      width: 24px;
+      height: 24px;
       border-radius: 50%;
       background: #dbeafe;
       color: #1e3a8a;
       font-weight: 700;
       display: grid;
       place-items: center;
-      font-size: 0.85rem;
+      font-size: 0.84rem;
     }
 
-    ul { margin: 8px 0 0 18px; }
-    li { margin: 4px 0; }
-
+    /* ── Table ── */
     table {
       width: 100%;
       border-collapse: collapse;
       margin-top: 10px;
-      font-size: 0.96rem;
+      font-size: 0.92rem;
     }
-
     th, td {
-      border: 1px solid #dbe3ef;
-      padding: 8px;
+      border: 1px solid var(--line);
+      padding: 8px 10px;
       vertical-align: top;
       text-align: left;
     }
+    th { background: #f1f5ff; font-weight: 600; }
+    tr:nth-child(even) td { background: #fafbff; }
 
-    th { background: #f1f5ff; }
-
+    /* ── Code box ── */
     .code-box {
-      border: 1px solid #dbe3ef;
-      border-radius: 10px;
+      border: 1px solid var(--line);
+      border-radius: 11px;
       overflow: hidden;
-      margin-top: 10px;
-      background: #ffffff;
+      margin-top: 12px;
     }
-
     .code-title {
-      background: #f6f9ff;
-      border-bottom: 1px solid #dbe3ef;
+      background: #f1f5ff;
+      border-bottom: 1px solid var(--line);
       color: #1f3e8a;
       font-weight: 600;
-      font-size: 0.86rem;
-      padding: 6px 10px;
+      font-size: 0.83rem;
+      padding: 6px 12px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
     }
-
+    .code-title::before {
+      content: "{ }";
+      font-family: monospace;
+      background: #dbeafe;
+      color: #1e3a8a;
+      border-radius: 4px;
+      padding: 1px 5px;
+      font-size: 0.78rem;
+    }
     pre {
       margin: 0;
-      padding: 12px;
-      font-size: 0.86rem;
-      line-height: 1.45;
+      padding: 13px;
+      font-size: 0.84rem;
+      line-height: 1.5;
+      background: #fff;
       white-space: pre-wrap;
       word-break: break-word;
       overflow-wrap: anywhere;
-      overflow-x: visible;
     }
+    pre code { font-family: Consolas, "Courier New", monospace; }
 
-    pre code {
-      white-space: pre-wrap;
-      word-break: break-word;
-      overflow-wrap: anywhere;
-      overflow-x: visible;
-      font-family: Consolas, "Courier New", monospace;
-    }
-
+    /* ── Note / callout ── */
     .note {
       background: #f7f9fc;
-      border: 1px dashed #cfd8e6;
-      border-radius: 8px;
-      padding: 10px;
+      border-left: 4px solid #93c5fd;
+      border-radius: 0 8px 8px 0;
+      padding: 10px 12px;
       color: var(--muted);
       margin-top: 10px;
+      font-size: 0.91rem;
     }
 
+    /* ── Chart wrapper ── */
+    .chart-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 14px;
+      margin-top: 14px;
+    }
+    .chart-wrap {
+      background: #fafbff;
+      border: 1px solid var(--line);
+      border-radius: 11px;
+      padding: 14px;
+    }
+    .chart-wrap.full { grid-column: 1 / -1; }
+    .chart-title {
+      font-weight: 600;
+      font-size: 0.88rem;
+      color: #0f2f7a;
+      margin-bottom: 10px;
+    }
+
+    /* ── Pill badge ── */
+    .pill {
+      display: inline-block;
+      border-radius: 20px;
+      padding: 2px 9px;
+      font-size: 0.78rem;
+      font-weight: 600;
+      margin: 0 2px;
+    }
+    .pill.blue   { background: #dbeafe; color: #1e3a8a; }
+    .pill.green  { background: #dcfce7; color: #14532d; }
+    .pill.orange { background: #ffedd5; color: #7c2d12; }
+    .pill.purple { background: #ede9fe; color: #4c1d95; }
+
+    /* ── Section divider label ── */
+    .section-label {
+      font-size: 0.75rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: #6b7280;
+      margin: 24px 0 4px;
+    }
+
+    /* ── Print ── */
     @media print {
       @page { margin: 12mm; }
-      body { background: #fff; }
-      .container { max-width: 100%; margin: 0; padding: 0; }
-      .hero, .panel {
-        box-shadow: none;
+      body { background: #fff; font-size: 0.88rem; line-height: 1.45; }
+      .container { max-width: 100%; margin: 0; padding: 0 0 8px; }
+      .hero {
+        background: #1d4ed8 !important;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+        padding: 16px 18px 14px;
+        margin-bottom: 8px;
+        border-radius: 10px;
+      }
+      .hero h1 { font-size: 1.35rem; margin-bottom: 5px; color: #fff !important; }
+      .hero p, .badge { color: #fff !important; }
+      .hero p { margin: 3px 0; }
+      /* Let panels break naturally across pages — no forced jumps */
+      .panel {
+        margin-top: 8px;
+        padding: 12px 14px;
+        border-radius: 8px;
         break-inside: auto;
         page-break-inside: auto;
-        margin-top: 6px;
-        margin-bottom: 6px;
-        padding: 10px 12px;
       }
-      .hero { margin-bottom: 8px; }
-      h1 { font-size: 1.5rem; margin-bottom: 6px; }
-      h2 { font-size: 1.08rem; margin-bottom: 6px; }
-      h3 { font-size: 0.96rem; margin-bottom: 5px; }
-      p { margin: 4px 0; }
-      ul, .flow { margin-top: 4px; }
-      .flow li {
-        margin: 5px 0;
-        padding-top: 7px;
-        padding-bottom: 7px;
-      }
-      table { margin-top: 6px; font-size: 0.9rem; }
-      th, td { padding: 6px; }
-      .code-box { margin-top: 6px; }
-      pre { padding: 8px; font-size: 0.8rem; line-height: 1.35; }
-      .note { margin-top: 6px; padding: 7px; }
+      /* Only avoid breaks inside small contained elements */
+      .stat-card, .flow li, .code-box { break-inside: avoid; page-break-inside: avoid; }
+      .section-label { margin: 10px 0 2px; }
+      h2 { font-size: 1.0rem; margin-bottom: 6px; padding-bottom: 4px; }
+      h3 { font-size: 0.92rem; margin: 8px 0 4px; }
+      p { margin: 3px 0; }
+      ul { margin-top: 4px; }
+      li { margin: 2px 0; }
+      .stats-grid { gap: 6px; margin-top: 8px; }
+      .stat-card { padding: 8px 10px; }
+      .stat-card .num { font-size: 1.25rem; }
+      .flow { margin-top: 6px; }
+      .flow li { margin: 4px 0; padding: 7px 10px 7px 38px; }
+      table { margin-top: 6px; font-size: 0.85rem; }
+      th, td { padding: 5px 7px; }
+      .code-box { margin-top: 7px; }
+      pre { padding: 8px 10px; font-size: 0.78rem; line-height: 1.35; }
+      .note { margin-top: 6px; padding: 7px 10px; }
+      .chart-row { gap: 8px; margin-top: 8px; grid-template-columns: 1fr 1fr; break-inside: avoid; page-break-inside: avoid; }
+      .chart-wrap { padding: 10px; break-inside: avoid; page-break-inside: avoid; }
+      .chart-title { margin-bottom: 6px; font-size: 0.82rem; }
       a { color: inherit; text-decoration: none; }
     }
   </style>
 </head>
 <body>
-  <main class="container">
-    <section class="hero">
-      <h1>AI Art Critic - Data Preparation</h1>
-      <p>
-        This report explains how the data was prepared before training the model.
-        The goal was to make sure the data was correct, clean, and ready to use.
-      </p>
-      <p>
-        The model learns to predict <strong>art styles</strong> from images
-        (for example Impressionism, Cubism, Realism, Baroque, and other styles in the dataset).
-      </p>
-      <p>
-        The steps below are shown in the same order they were done.
-        For each step, it shows what was done and what the result was.
-      </p>
-    </section>
+<main class="container">
 
-    <section class="panel">
-      <h2>1) Quick Map: What was done</h2>
-      <table>
-        <thead>
-          <tr>
-            <th>Workstream</th>
-            <th>Main data preparation work</th>
-            <th>Output / result</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr>
-            <td>Local image dataset build</td>
-            <td>Loaded the ArtBench file, checked needed columns, downloaded images into local style folders, and saved cleaned CSV files.</td>
-            <td>Local image folders, a full updated CSV, a simple training CSV, and a failure CSV.</td>
-          </tr>
-          <tr>
-            <td>Cross-dataset path linking</td>
-            <td>Matched ArtEmis painting names to real WikiArt image paths by scanning image files and matching names.</td>
-            <td>A new CSV with added painting path columns.</td>
-          </tr>
-          <tr>
-            <td>Classification input preparation</td>
-            <td>Loaded train/validation CSVs, mapped labels to style names, removed broken rows, and applied image preprocessing settings.</td>
-            <td>Clean train/validation data ready for training.</td>
-          </tr>
-        </tbody>
-      </table>
-    </section>
+  <!-- ── HERO ── -->
+  <section class="hero">
+    <h1>AI Art Critic - Data Preparation</h1>
+    <p>
+      This document shows how I sourced, cleaned, and prepared the data for the AI Art Critic model.
+      The focus is on <strong>data &amp; knowledge stewardship</strong>: taking responsibility for the quality of the data
+      from start to finish, not just downloading it and hoping for the best.
+    </p>
+    <p>
+      The model's main job is recognising <strong>art styles</strong> from images, 27 styles from WikiArt like
+      Impressionism, Cubism, and Baroque. In the later experiments I also brought in <strong>artist</strong> and
+      <strong>emotion</strong> labels to see if training on multiple things at once helps.
+    </p>
+    <div>
+      <span class="badge">3 datasets</span>
+      <span class="badge">9 experiment notebooks</span>
+      <span class="badge">27 art styles</span>
+      <span class="badge">~81k WikiArt images</span>
+      <span class="badge">Multitask learning</span>
+    </div>
+  </section>
 
-    <section class="panel">
-      <h2>2) Step-by-step: ArtBench local preparation</h2>
-      <ol class="flow">
-        <li>Opened the main CSV file and first checked if all required columns were there.</li>
-        <li>Cleaned folder and file names so files could be saved safely on disk.</li>
-        <li>Downloaded images with retry support and skipped files that were already downloaded.</li>
-        <li>Saved three outputs: full local CSV, simple training CSV, and a failures CSV.</li>
-      </ol>
+  <!-- ── SECTION: OVERVIEW ── -->
+  <p class="section-label">Overview</p>
 
-      <div class="code-box">
-        <div class="code-title">ArtBench - schema check + output writing</div>
-        <pre><code class="language-python">df = pd.read_csv(CSV_PATH)
+  <section class="panel">
+    <h2>1. Workstream Overview</h2>
+    <p>I used three different datasets across this project. None of them were ready to use straight away, so each one needed its own prep work before anything could go into training.</p>
+    <table>
+      <thead>
+        <tr>
+          <th>Workstream</th>
+          <th>What was done</th>
+          <th>Output</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><span class="pill blue">ArtBench</span><br/>Local image build</td>
+          <td>Checked the metadata CSV had the right columns, downloaded 60k images with retry logic, and sorted them into style folders on disk.</td>
+          <td>Local image folders, full CSV with local paths, simple training CSV, failure CSV (61 images).</td>
+        </tr>
+        <tr>
+          <td><span class="pill green">ArtEmis</span><br/>Path linking</td>
+          <td>Scanned 81k WikiArt files on disk, built a lookup from filename to path, matched each ArtEmis painting name to its actual file, and dropped anything that couldn't be found.</td>
+          <td>Enriched CSV with two new columns: <code>painting_path</code> and <code>anchor_painting_path</code>. 233,475 valid rows.</td>
+        </tr>
+        <tr>
+          <td><span class="pill orange">WikiArt</span><br/>Experiment prep</td>
+          <td>Same base prep across all 9 tests: load the CSVs, map labels to style names, remove any broken or missing files, apply image transforms. Augmentation got stronger with each test.</td>
+          <td>Clean DataLoaders ready for training, with label mapping, missing-file filtering, and image transforms applied.</td>
+        </tr>
+        <tr>
+          <td><span class="pill purple">Multitask (test 9)</span><br/>ArtEmis merge</td>
+          <td>Merged WikiArt and ArtEmis on a normalised painting name key. Multiple emotion annotations per painting were resolved with a majority vote.</td>
+          <td>Dataset that returns style, artist <em>and</em> emotion labels per image. One shared backbone trained on all three tasks at once.</td>
+        </tr>
+      </tbody>
+    </table>
+  </section>
+
+  <!-- ── SECTION: DATASET STATS ── -->
+  <section class="panel">
+    <h2>2. Dataset Statistics at a Glance</h2>
+
+    <h3>WikiArt</h3>
+    <div class="stats-grid">
+      <div class="stat-card blue">
+        <div class="num">57,023</div>
+        <div class="label">Training images (after cleaning)</div>
+      </div>
+      <div class="stat-card blue">
+        <div class="num">24,421</div>
+        <div class="label">Validation images</div>
+      </div>
+      <div class="stat-card blue">
+        <div class="num">27</div>
+        <div class="label">Art style classes</div>
+      </div>
+      <div class="stat-card blue">
+        <div class="num">2</div>
+        <div class="label">Rows removed from training (missing files)</div>
+      </div>
+    </div>
+
+    <h3 style="margin-top:18px;">ArtBench</h3>
+    <div class="stats-grid">
+      <div class="stat-card green">
+        <div class="num">59,939</div>
+        <div class="label">Images downloaded (of 60,000)</div>
+      </div>
+      <div class="stat-card green">
+        <div class="num">10</div>
+        <div class="label">Art style classes</div>
+      </div>
+      <div class="stat-card green">
+        <div class="num">61</div>
+        <div class="label">Failed downloads (0.1%)</div>
+      </div>
+    </div>
+
+    <h3 style="margin-top:18px;">ArtEmis</h3>
+    <div class="stats-grid">
+      <div class="stat-card orange">
+        <div class="num">233,475</div>
+        <div class="label">Valid rows after path linking (of 237,998)</div>
+      </div>
+      <div class="stat-card orange">
+        <div class="num">7</div>
+        <div class="label">Emotion classes</div>
+      </div>
+      <div class="stat-card orange">
+        <div class="num">4,523</div>
+        <div class="label">Rows removed (no matching image path)</div>
+      </div>
+    </div>
+
+    <div class="chart-row" style="margin-top:18px;">
+      <div class="chart-wrap">
+        <div class="chart-title">WikiArt: training vs validation split</div>
+        <canvas id="chartDatasetSizes" height="220"></canvas>
+      </div>
+      <div class="chart-wrap">
+        <div class="chart-title">ArtBench download quality</div>
+        <canvas id="chartArtbenchDownload" height="220"></canvas>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── SECTION: ARTBENCH ── -->
+  <p class="section-label">Dataset Preparation</p>
+
+  <section class="panel">
+    <h2>3. ArtBench: Building a Local Image Dataset</h2>
+    <p>
+      ArtBench-10 has 60,000 paintings spread across 10 art styles, roughly 6,000 per style.
+      The images aren't stored in the repo though, so I had to write a download script to pull them all down and save them locally.
+    </p>
+
+    <ol class="flow">
+      <li>First I opened the metadata CSV and checked that the three columns I needed (<code>name</code>, <code>url</code>, <code>label</code>) were actually there. If any were missing the script would immediately throw an error rather than silently doing the wrong thing.</li>
+      <li>Cleaned up folder and file names so Windows wouldn't reject them because of special characters.</li>
+      <li>Downloaded everything using 16 parallel threads at once. Each file got up to 3 attempts in case the connection dropped, and files that were already on disk got skipped so I could safely rerun the script.</li>
+      <li>Saved three output files at the end: one with all the info, one in a simplified format that matches the WikiArt CSV layout, and one just for the 61 downloads that failed so I could see what went wrong.</li>
+    </ol>
+
+    <h3>Download results</h3>
+    <table>
+      <thead><tr><th>Metric</th><th>Value</th></tr></thead>
+      <tbody>
+        <tr><td>Total images in metadata</td><td>60,000</td></tr>
+        <tr><td>Successfully downloaded</td><td>59,939</td></tr>
+        <tr><td>Failed downloads</td><td>61 (0.1%)</td></tr>
+        <tr><td>Styles / classes</td><td>10</td></tr>
+        <tr><td>Images per style</td><td>~6,000</td></tr>
+      </tbody>
+    </table>
+
+    <div class="code-box">
+      <div class="code-title">ArtBench - column validation &amp; output writing</div>
+      <pre><code class="language-python">df = pd.read_csv(CSV_PATH)
 required_columns = {"name", "url", "label"}
 missing = required_columns - set(df.columns)
 if missing:
     raise ValueError(f"Missing required columns: {missing}")
 
-result_df = pd.DataFrame(results).sort_values("index")
-
-# Keep original URL, add local path, and save outputs
+# Attach local path, keep original URL, flag download status
 df_out = df.copy()
 df_out["source_url"] = df_out["url"]
 df_out["url"] = result_df["local_path"].values
@@ -261,72 +473,94 @@ df_out["download_ok"] = result_df["ok"].values
 df_out["download_error"] = result_df["error"].values
 
 df_out.to_csv(OUTPUT_CSV, index=False)
+
 failures = df_out[~df_out["download_ok"]].copy()
 if len(failures) > 0:
     failures.to_csv(FAILURES_CSV, index=False)</code></pre>
-      </div>
-    </section>
+    </div>
 
-    <section class="panel">
-      <h2>3) Step-by-step: ArtEmis path linking</h2>
-      <ol class="flow">
-        <li>Loaded the ArtEmis contrastive CSV.</li>
-        <li>Scanned WikiArt images and built a map from image name to real file path.</li>
-        <li>Used that map to fill in paths for painting and anchor painting.</li>
-        <li>Counted missing matches and exported the updated file.</li>
-      </ol>
+    <div class="note">
+      Images get saved into subfolders by style: <code>images/{style_name}/{filename}.jpg</code>.
+      That structure meant I could reuse the exact same loading code I already had for WikiArt without changing anything.
+    </div>
+  </section>
 
-      <div class="code-box">
-        <div class="code-title">ArtEmis - matching names to WikiArt paths</div>
-        <pre><code class="language-python"># Build map: image stem -> possible relative paths
+  <!-- ── SECTION: ARTEMIS ── -->
+  <section class="panel">
+    <h2>4. ArtEmis: Linking Emotion Labels to WikiArt Images</h2>
+    <p>
+      ArtEmis is a dataset where people wrote about their emotional reactions to paintings. Each row has a painting name,
+      an anchor painting to compare it to, and an emotion label. The catch is that ArtEmis only stores the painting names
+      as plain text, not actual file paths. So before I could use it, I needed to figure out where each painting actually
+      lives on disk.
+    </p>
+
+    <ol class="flow">
+      <li>Loaded the ArtEmis CSV (237,998 rows).</li>
+      <li>Scanned the entire WikiArt folder and catalogued all 81,444 image files. For each one, stored the lowercase filename (without extension) as a key that maps to its relative path.</li>
+      <li>Went through every ArtEmis row and looked up both the painting name and anchor painting name in that map to fill in the real paths.</li>
+      <li>Not everything matched up. 2,577 paintings had no match for the main column, and 2,194 had no match for the anchor. Those rows got removed.</li>
+      <li>Saved the result as <code>Contrastive_with_paths.csv</code>. 233,475 rows made it through.</li>
+    </ol>
+
+    <div class="code-box">
+      <div class="code-title">ArtEmis - building the name-to-path lookup</div>
+      <pre><code class="language-python"># Scan all WikiArt images and map filename stem → relative path
 name_to_paths = {}
 for img_path in image_files:
     stem = img_path.stem.strip().lower()
-    rel_to_datasets = img_path.relative_to(project_root / "datasets")
-    name_to_paths.setdefault(stem, []).append(rel_to_datasets.as_posix())
+    rel = img_path.relative_to(project_root / "datasets")
+    name_to_paths.setdefault(stem, []).append(rel.as_posix())
 
 def resolve_image_path(name: str):
     if pd.isna(name):
         return None
     key = str(name).strip().lower()
     matches = name_to_paths.get(key, [])
-    if not matches:
-        return None
-    return sorted(matches)[0]  # deterministic
+    return sorted(matches)[0] if matches else None  # deterministic
 
 df["painting_path"] = df["painting"].apply(resolve_image_path)
 df["anchor_painting_path"] = df["anchor_painting"].apply(resolve_image_path)
 
-print("Missing painting_path:", int(df["painting_path"].isna().sum()))
-print("Missing anchor_painting_path:", int(df["anchor_painting_path"].isna().sum()))
+print("Missing painting_path:", int(df["painting_path"].isna().sum()))        # 2,577
+print("Missing anchor_painting_path:", int(df["anchor_painting_path"].isna().sum()))  # 2,194
 
 df.to_csv(output_csv, index=False)</code></pre>
-      </div>
-    </section>
+    </div>
 
-    <section class="panel">
-      <h2>4) Step-by-step: WikiArt preparation in experiment notebooks</h2>
-      <p>
-        In the experiment notebooks, the main goal was to keep training input clean and stable.
-        The same preparation flow was reused across tests.
-      </p>
-      <p>
-        Each image is linked to a numeric label that points to an art style class.
-        This is how the model learns which style each painting belongs to.
-      </p>
+    <h3>Before vs after filtering</h3>
+    <table>
+      <thead><tr><th>Stage</th><th>Rows</th><th>Removed</th></tr></thead>
+      <tbody>
+        <tr><td>Raw ArtEmis CSV</td><td>237,998</td><td>n/a</td></tr>
+        <tr><td>After removing missing <code>painting_path</code></td><td>~235,421</td><td>2,577</td></tr>
+        <tr><td>After removing missing <code>anchor_painting_path</code></td><td>233,475</td><td>2,194</td></tr>
+      </tbody>
+    </table>
+  </section>
 
-      <ol class="flow">
-        <li>Automatically found the dataset root and train/validation CSV files.</li>
-        <li>Built a clear label-to-style mapping from folder names.</li>
-        <li>Removed rows with missing files and, in later tests, checked if images were actually readable.</li>
-        <li>Applied image processing (resize, normalize, and extra image changes during training).</li>
-        <li>Used stable dataloader settings for Windows so loading did not fail or stall.</li>
-      </ol>
+  <!-- ── SECTION: WIKIART PER TEST ── -->
+  <p class="section-label">WikiArt Experiment Preparation (Tests 1 – 9)</p>
 
-      <div class="code-box">
-        <div class="code-title">WikiArt - finding files + label mapping</div>
-        <pre><code class="language-python">def find_split_csv(data_dir: Path, split: str) -> Path:
-    split = split.lower()
+  <section class="panel">
+    <h2>5. WikiArt: Preparation in the Experiment Notebooks</h2>
+    <p>
+      WikiArt is the main dataset I kept coming back to across all 9 tests. The core prep steps were the same every time,
+      but each notebook tweaked or extended them — mainly the augmentation and how thoroughly bad images were caught.
+    </p>
+
+    <h3>Base preparation steps (used in every test)</h3>
+    <ol class="flow">
+      <li>The script auto-finds the right CSV files by searching for keywords like <code>"train"</code> and <code>"style"</code> in filenames, so I didn't have to hardcode any paths.</li>
+      <li>Built a dictionary that maps each label number back to its style name by reading the folder structure (e.g. folder <code>impressionism/</code> = label <code>4</code>). This got printed out before every run so I could verify it was right.</li>
+      <li>Every image path got checked with <code>Path.exists()</code>. Rows pointing to files that no longer existed were dropped. From test 3 onwards I also tried actually opening each image to catch files that exist but are broken inside. Only 2 training rows turned out to have problems.</li>
+      <li>Images got resized and normalised using ImageNet mean and std values, which work well for pretrained models. Training images also got augmented, and those augmentations got more aggressive with each test.</li>
+      <li>Set <code>num_workers=0</code> specifically for Windows because PyTorch's multiprocessing in the dataloader causes crashes there.</li>
+    </ol>
+
+    <div class="code-box">
+      <div class="code-title">WikiArt - auto-finding CSV files &amp; building label map</div>
+      <pre><code class="language-python">def find_split_csv(data_dir: Path, split: str) -> Path:
     csvs = sorted(data_dir.glob("*.csv"))
     preferred = [p for p in csvs if split in p.stem.lower() and "style" in p.stem.lower()]
     if preferred:
@@ -336,10 +570,8 @@ df.to_csv(output_csv, index=False)</code></pre>
         return fallback[0]
     raise FileNotFoundError(f"Could not find a '{split}' CSV in {data_dir}")
 
-def extract_style_name(relative_path: str) -> str:
-    return Path(relative_path).parts[0]
-
-train_df["style_name"] = train_df["relative_path"].map(extract_style_name)
+# Build numeric label → style name dictionary
+train_df["style_name"] = train_df["relative_path"].map(lambda p: Path(p).parts[0])
 label_to_style = (
     train_df[["label", "style_name"]]
     .drop_duplicates()
@@ -347,17 +579,20 @@ label_to_style = (
     .set_index("label")["style_name"]
     .to_dict()
 )</code></pre>
-      </div>
+    </div>
 
-      <div class="code-box">
-        <div class="code-title">WikiArt - cleaning invalid rows + transforms</div>
-        <pre><code class="language-python">def filter_existing_rows(df: pd.DataFrame, image_root: Path, split_name: str) -> pd.DataFrame:
+    <div class="code-box">
+      <div class="code-title">WikiArt - removing missing files &amp; applying transforms</div>
+      <pre><code class="language-python">def filter_existing_rows(df, image_root, split_name):
     full_paths = df["relative_path"].map(lambda p: image_root / p)
     exists_mask = full_paths.map(lambda p: p.exists())
     kept = int(exists_mask.sum())
     removed = int((~exists_mask).sum())
     print(f"{split_name}: kept {kept:,}, removed {removed:,} missing files")
     return df.loc[exists_mask].reset_index(drop=True)
+
+# Train result:  kept 57,023, removed 2
+# Val result:    kept 24,421, removed 0
 
 train_transform = transforms.Compose([
     transforms.RandomResizedCrop(224, scale=(0.85, 1.0)),
@@ -366,43 +601,309 @@ train_transform = transforms.Compose([
     transforms.ColorJitter(brightness=0.2, contrast=0.2, saturation=0.15),
     transforms.ToTensor(),
     transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
-])
+])</code></pre>
+    </div>
 
-if os.name == "nt":
-    num_workers = 0</code></pre>
-      </div>
-    </section>
+    <h3>How augmentation evolved across tests</h3>
+    <table>
+      <thead>
+        <tr>
+          <th>Test</th>
+          <th>Model</th>
+          <th>Key augmentation added</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><span class="pill blue">Test 1</span></td>
+          <td>ResNet18</td>
+          <td>HorizontalFlip + Rotation(±10°) + ColorJitter</td>
+        </tr>
+        <tr>
+          <td><span class="pill blue">Test 2</span></td>
+          <td>ResNet18</td>
+          <td>HorizontalFlip only (simpler baseline)</td>
+        </tr>
+        <tr>
+          <td><span class="pill blue">Test 3</span></td>
+          <td>ResNet50</td>
+          <td>RandomResizedCrop added, stronger ColorJitter</td>
+        </tr>
+        <tr>
+          <td><span class="pill blue">Test 4</span></td>
+          <td>ConvNeXt-Tiny</td>
+          <td>RandAugment + RandomErasing + MixUp/CutMix, class-weighted loss</td>
+        </tr>
+        <tr>
+          <td><span class="pill blue">Test 5</span></td>
+          <td>ViT-B/16-384</td>
+          <td>Vision Transformer backbone, same augmentation as test 4</td>
+        </tr>
+        <tr>
+          <td><span class="pill blue">Test 6</span></td>
+          <td>ConvNeXt-Tiny</td>
+          <td>Gradient accumulation (effective batch 48), more epochs</td>
+        </tr>
+        <tr>
+          <td><span class="pill blue">Test 7</span></td>
+          <td>ViT-B/16-384</td>
+          <td>RandAugment magnitude raised to 11, effective batch 60</td>
+        </tr>
+        <tr>
+          <td><span class="pill blue">Test 8</span></td>
+          <td>ViT-B/16-384</td>
+          <td>Effective batch raised to 72 (smaller per-batch, more accumulation)</td>
+        </tr>
+        <tr>
+          <td><span class="pill purple">Test 9</span></td>
+          <td>ViT-B/16-384</td>
+          <td>Multitask: added artist + emotion heads, ArtEmis emotion data merged in</td>
+        </tr>
+      </tbody>
+    </table>
+  </section>
 
-    <section class="panel">
-      <h2>5) How the preparation improved over time</h2>
-      <ul>
-        <li><strong>Early runs:</strong> basic loading, label mapping, missing-file cleanup, and simple transforms.</li>
-        <li><strong>Middle runs:</strong> stronger image changes during training and better checks for unreadable images.</li>
-        <li><strong>Later runs:</strong> faster filtering, safer checks, and more stable loading settings.</li>
-        <li><strong>Recovery stage:</strong> the same preparation structure was kept, and saved results could still be used.</li>
-      </ul>
-    </section>
+  <!-- ── SECTION: TEST 9 MULTITASK ── -->
+  <section class="panel">
+    <h2>6. Test 9: Multitask Learning (Style + Artist + Emotion)</h2>
+    <p>
+      Test 9 is where the data side of things got noticeably more complicated. Up until now every test was purely about style classification,
+      but here I wanted the model to predict three things at once using one <strong>shared backbone</strong>:
+    </p>
+    <ul>
+      <li><strong>Art style</strong>: 27 classes, taken from the WikiArt folder structure</li>
+      <li><strong>Artist</strong>: pulled directly from the image file paths in WikiArt</li>
+      <li><strong>Emotion</strong>: 7 classes (anger, disgust, fear, joy, sadness, surprise, trust) from ArtEmis</li>
+    </ul>
 
-    <section class="panel">
-      <h2>6) Final outputs created by preparation</h2>
-      <ul>
-        <li><strong>ArtBench:</strong> saved a new CSV with local image paths, a simple CSV for training, a failed-download CSV, and local image folders.</li>
-        <li><strong>ArtEmis:</strong> saved a new CSV with matched WikiArt image paths.</li>
-        <li><strong>WikiArt:</strong> kept clean tables and stable data loaders ready for training.</li>
-      </ul>
-      <p>
-        Final takeaway: the data was not just collected.
-        It was checked, fixed, and cleaned before training.
-        That helped training run better and gave more reliable results.
-      </p>
-    </section>
-  </main>
+    <h3>How the datasets were merged</h3>
+    <ol class="flow">
+      <li>Started with the same WikiArt train/val CSVs as always (57,023 training images).</li>
+      <li>Pulled the artist name from the file path of each image since it's already encoded in the folder structure.</li>
+      <li>Loaded <code>Contrastive_with_paths.csv</code> and normalised all painting names into a <code>(style_name, painting_name)</code> key so they could be matched against WikiArt rows.</li>
+      <li>Merged the two datasets on that key. A lot of paintings had emotion annotations from multiple different people, so I used a majority vote to pick one label per painting.</li>
+      <li>Images with no emotion annotation at all weren't thrown out. I kept them but set <code>emotion_label = -1</code> so the emotion loss would just be skipped for those rows during training.</li>
+    </ol>
 
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.10.0/highlight.min.js"></script>
-  <script>
-    if (window.hljs) {
-      window.hljs.highlightAll();
+    <div class="code-box">
+      <div class="code-title">Test 9 - dataset that returns all three labels</div>
+      <pre><code class="language-python">class MultiTaskDataset(Dataset):
+    def __getitem__(self, idx):
+        row = self.df.iloc[idx]
+        image = self.load_image(row["relative_path"])
+        style_label  = int(row["label"])
+        artist_label = int(row["artist_label"])
+        emotion_label = int(row["emotion_label"])   # -1 if unknown
+        has_emotion  = emotion_label != -1
+        return image, style_label, artist_label, emotion_label, has_emotion
+
+# Loss is only applied when emotion annotation is available
+if has_emotion.any():
+    emotion_loss = ce_emotion(emotion_logits[has_emotion], emotion_labels[has_emotion])
+    total_loss = style_loss + artist_loss + 0.7 * emotion_loss
+else:
+    total_loss = style_loss + artist_loss</code></pre>
+    </div>
+
+    <h3>Three-head architecture</h3>
+    <table>
+      <thead><tr><th>Head</th><th>Output size</th><th>Loss</th><th>Applied when</th></tr></thead>
+      <tbody>
+        <tr><td><code>style_head</code></td><td>27 classes</td><td>CrossEntropy (label smoothing 0.08)</td><td>Every batch</td></tr>
+        <tr><td><code>artist_head</code></td><td>N artist classes</td><td>CrossEntropy (label smoothing 0.08)</td><td>Every batch</td></tr>
+        <tr><td><code>emotion_head</code></td><td>7 classes</td><td>CrossEntropy (weight 0.7)</td><td>Only rows with emotion label</td></tr>
+      </tbody>
+    </table>
+
+    <div class="note">
+      The thinking behind multitask learning is that if you force the model to also guess artist and emotion, it has to pick up on more visual detail than it would from style labels alone. That shared knowledge should carry over and help with style prediction too.
+    </div>
+  </section>
+
+  <!-- ── SECTION: QUALITY STANDARDS ── -->
+  <section class="panel">
+    <h2>7. Data Quality Standards Applied</h2>
+    <p>
+      Getting the data is only half the job. I also had to make sure it was actually usable before putting it anywhere near a training loop.
+      Here's a breakdown of every check I put in place across the three datasets.
+    </p>
+    <table>
+      <thead>
+        <tr>
+          <th>Quality check</th>
+          <th>Where applied</th>
+          <th>How it was done</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Schema validation</td>
+          <td>ArtBench</td>
+          <td>Before touching anything, the script checks that <code>name</code>, <code>url</code>, and <code>label</code> are all present in the CSV. If one's missing it throws an error immediately rather than failing silently halfway through a download.</td>
+        </tr>
+        <tr>
+          <td>Missing file detection</td>
+          <td>WikiArt (all tests)</td>
+          <td>Every image path gets checked with <code>Path.exists()</code>. Rows that point to files no longer on disk get dropped. In practice only 2 training rows had to go, which is pretty clean.</td>
+        </tr>
+        <tr>
+          <td>Corrupt image check</td>
+          <td>WikiArt test 3+</td>
+          <td>A file can exist on disk but still be broken inside. From test 3 onwards I also tried opening each image with <code>Image.open()</code> and calling <code>verify()</code> to catch those cases.</td>
+        </tr>
+        <tr>
+          <td>Download integrity</td>
+          <td>ArtBench</td>
+          <td>Each image download gets up to 3 retries before it gives up. Anything that still failed ended up in its own CSV so I could see exactly what didn't make it.</td>
+        </tr>
+        <tr>
+          <td>Path normalisation</td>
+          <td>ArtEmis</td>
+          <td>Painting names in ArtEmis can have different capitalisation or trailing spaces compared to the actual filenames. Everything gets lowercased and stripped before matching so those small differences don't cause false misses.</td>
+        </tr>
+        <tr>
+          <td>Label consistency</td>
+          <td>WikiArt (all tests)</td>
+          <td>The numeric labels in the CSV get mapped back to actual style names using the folder structure, and the full dictionary gets printed before every training run so I can double-check nothing got scrambled.</td>
+        </tr>
+        <tr>
+          <td>Class imbalance handling</td>
+          <td>WikiArt test 4+</td>
+          <td>Some art styles have way more images than others. From test 4 onwards I calculated class weights based on how often each style appeared and used those to weight both the loss function and the data sampler, so rarer styles didn't get ignored.</td>
+        </tr>
+        <tr>
+          <td>Emotion aggregation</td>
+          <td>ArtEmis / test 9</td>
+          <td>Many paintings in ArtEmis have emotion annotations from multiple different people. I resolved those by majority vote. Paintings with no annotations at all were kept but flagged as <code>emotion = -1</code> so training could still use them for the style and artist tasks.</td>
+        </tr>
+      </tbody>
+    </table>
+  </section>
+
+  <!-- ── SECTION: OUTPUTS ── -->
+  <section class="panel">
+    <h2>8. Final Outputs Created by Preparation</h2>
+
+    <h3>ArtBench</h3>
+    <ul>
+      <li><code>ArtBench-10-local-paths.csv</code>: the full metadata table with local file paths added to each row</li>
+      <li><code>ArtBench-10-local-simple.csv</code>: a stripped-down version that matches the WikiArt CSV format (relative_path, label)</li>
+      <li><code>ArtBench-10-download-failures.csv</code>: the 61 images that never downloaded, saved for review</li>
+      <li><code>images/{style_name}/*.jpg</code>: the actual images saved locally, sorted into folders by style</li>
+    </ul>
+
+    <h3>ArtEmis</h3>
+    <ul>
+      <li><code>Contrastive_with_paths.csv</code>: the original ArtEmis data with two new columns added (<code>painting_path</code> and <code>anchor_painting_path</code>), 233,475 usable rows.</li>
+    </ul>
+
+    <h3>WikiArt (per experiment)</h3>
+    <ul>
+      <li>Clean DataLoader objects for train and validation, with transforms already applied</li>
+      <li><code>label_to_style</code> dictionary printed and verified before every training run</li>
+      <li>From test 9 onwards: a merged dataset that combines WikiArt and ArtEmis, with style, artist, and emotion labels all together per image</li>
+    </ul>
+  </section>
+
+  <!-- ── SECTION: CONCLUSION ── -->
+  <section class="panel">
+    <h2>9. Conclusion</h2>
+    <p>
+      Looking back at all the prep work, the biggest thing I took away is that data preparation is where a lot of the real work actually happens.
+      It's easy to think you can just download a dataset and start training, but in practice there are always files missing,
+      column names that don't match, painting names that are spelled slightly differently depending on the source, images that exist on disk
+      but crash when you try to open them are all kinds of small things that add up.
+    </p>
+    <p>
+      Across this project I worked with three separate datasets (WikiArt, ArtBench, ArtEmis) that each had their own issues.
+      ArtBench needed a full download pipeline with retry logic. ArtEmis needed a path-matching step before it could even be used.
+      WikiArt was the most straightforward but still needed consistent cleaning and label validation across all 9 experiments.
+    </p>
+    <p>
+      By test 9 the data pipeline had grown quite a bit: merging two datasets, handling multi-labels,
+      dealing with images that only have some labels available, and keeping all of that consistent across train and validation.
+      Getting this right is what made it possible to actually train a multitask model without constantly running into bugs or garbage outputs.
+    </p>
+  </section>
+
+</main>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.10.0/highlight.min.js"></script>
+<script>
+  if (window.hljs) window.hljs.highlightAll();
+
+  // ── Chart defaults ──
+  Chart.defaults.font.family = "'Segoe UI', Roboto, Arial, sans-serif";
+  Chart.defaults.font.size = 12;
+  Chart.defaults.color = "#4b5563";
+
+  // ── 1: Dataset sizes bar chart ──
+  new Chart(document.getElementById("chartDatasetSizes"), {
+    type: "bar",
+    data: {
+      labels: ["Training", "Validation"],
+      datasets: [{
+        label: "WikiArt images",
+        data: [57023, 24421],
+        backgroundColor: ["#3b82f6", "#93c5fd"],
+        borderRadius: 7,
+        borderSkipped: false,
+        barThickness: 60,
+      }]
+    },
+    options: {
+      responsive: true,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          callbacks: {
+            label: ctx => " " + ctx.parsed.y.toLocaleString() + " images"
+          }
+        }
+      },
+      scales: {
+        y: {
+          beginAtZero: true,
+          ticks: {
+            callback: v => v >= 1000 ? (v/1000).toFixed(0)+"k" : v
+          },
+          grid: { color: "#e5e7eb" }
+        },
+        x: { grid: { display: false } }
+      }
     }
-  </script>
+  });
+
+  // ── 2: ArtBench download donut ──
+  new Chart(document.getElementById("chartArtbenchDownload"), {
+    type: "doughnut",
+    data: {
+      labels: ["Downloaded (59,939)", "Failed (61)"],
+      datasets: [{
+        data: [59939, 61],
+        backgroundColor: ["#22c55e", "#f87171"],
+        borderWidth: 2,
+        borderColor: "#fff",
+        hoverOffset: 6
+      }]
+    },
+    options: {
+      responsive: true,
+      cutout: "65%",
+      plugins: {
+        legend: {
+          position: "bottom",
+          labels: { padding: 14, boxWidth: 14, boxHeight: 14 }
+        },
+        tooltip: {
+          callbacks: {
+            label: ctx => " " + ctx.label
+          }
+        }
+      }
+    }
+  });
+
+</script>
 </body>
 </html>
