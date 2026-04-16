@@ -45,7 +45,7 @@
 
     /* Hero */
     .hero {
-      background: linear-gradient(135deg, #0f172a 0%, #1d4ed8 55%, #3b82f6 100%);
+      background: linear-gradient(135deg, #1d4ed8 0%, #3b82f6 60%, #60a5fa 100%);
       color: #fff;
       border-radius: 16px;
       padding: 28px 30px 22px;
@@ -261,7 +261,7 @@
       body { background: #fff; font-size: 0.88rem; line-height: 1.45; }
       .container { max-width: 100%; margin: 0; padding: 0 0 8px; }
       .hero {
-        background: #0f172a !important;
+        background: linear-gradient(135deg, #1d4ed8 0%, #3b82f6 60%, #60a5fa 100%) !important;
         -webkit-print-color-adjust: exact;
         print-color-adjust: exact;
         padding: 16px 18px 14px;
@@ -271,7 +271,7 @@
       .hero h1 { font-size: 1.35rem; margin-bottom: 5px; color: #fff !important; }
       .hero p, .badge { color: #fff !important; }
       .hero p { margin: 3px 0; }
-      /* Let panels break naturally across pages — no forced jumps */
+      /* Let panels break naturally across pages - no forced jumps */
       .panel {
         margin-top: 8px;
         padding: 12px 14px;
@@ -311,7 +311,7 @@
   <section class="hero">
     <h1>AI Art Critic - Model Development &amp; Adaptation</h1>
     <p>
-      This document covers how I built, tested, and gradually improved the model across 9 experiments.
+      This document covers how I built, tested, and gradually improved the model across 12 experiments.
       The focus is on <strong>model interaction &amp; adaptation</strong>: developing and validating an AI solution
       step by step, making sure each change actually helped before moving on to the next one.
     </p>
@@ -320,9 +320,9 @@
       Security, privacy, ethics, and compliance are also covered at the end.
     </p>
     <div>
-      <span class="badge">9 experiments</span>
-      <span class="badge">ResNet to ViT</span>
-      <span class="badge">53% to 76.7% accuracy</span>
+      <span class="badge">12 experiments</span>
+      <span class="badge">ResNet → ViT → DINOv2</span>
+      <span class="badge">53% to 78.3% accuracy</span>
       <span class="badge">Two-stage fine-tuning</span>
       <span class="badge">Multitask learning</span>
     </div>
@@ -356,20 +356,20 @@
         <div class="label">Val accuracy, test 1 (ResNet18 baseline)</div>
       </div>
       <div class="stat-card green">
-        <div class="num">76.7%</div>
-        <div class="label">Val accuracy, test 8 (best so far)</div>
+        <div class="num">78.3%</div>
+        <div class="label">Val accuracy, test 12 (best overall)</div>
       </div>
       <div class="stat-card blue">
-        <div class="num">97.5%</div>
-        <div class="label">Top-5 val accuracy, test 8</div>
+        <div class="num">96.7%</div>
+        <div class="label">Top-5 val accuracy, test 12</div>
       </div>
       <div class="stat-card orange">
-        <div class="num">9</div>
+        <div class="num">12</div>
         <div class="label">Experiments run total</div>
       </div>
       <div class="stat-card purple">
-        <div class="num">74</div>
-        <div class="label">Best epoch in test 8 (longest run)</div>
+        <div class="num">72</div>
+        <div class="label">Best epoch in test 12 (longest run)</div>
       </div>
       <div class="stat-card teal">
         <div class="num">3</div>
@@ -448,15 +448,34 @@
         <tr>
           <td><span class="pill purple">Test 9</span></td>
           <td>ViT-B/16-384</td>
-          <td>Multitask: three prediction heads (style, artist, emotion), ArtEmis emotion data merged in, learnable loss weighting. Not yet run.</td>
-          <td>(pending)</td>
+          <td>Multitask: three prediction heads (style, artist, emotion), ArtEmis emotion data merged in, learnable loss weighting.</td>
+          <td>85.3%*</td>
+        </tr>
+        <tr>
+          <td><span class="pill purple">Test 10</span></td>
+          <td>ViT-B/16-384</td>
+          <td>Simplified to style+artist only (dropped emotion). Used dedicated artist CSVs. Uncertainty weighting between the two tasks.</td>
+          <td>73.7%</td>
+        </tr>
+        <tr>
+          <td><span class="pill green">Test 11</span></td>
+          <td>DINOv2 ViT-B/14-336</td>
+          <td>Switched backbone to DINOv2 (self-supervised, 142M images). Added layer-wise learning rate decay (LLRD). Proper val/test split introduced.</td>
+          <td>74.3%†</td>
+        </tr>
+        <tr>
+          <td><span class="pill green">Test 12</span></td>
+          <td>DINOv2 ViT-B/14-448</td>
+          <td>Raised resolution from 336 to 448px. Warm-started from test 11 checkpoint. Same pipeline and LLRD schedule.</td>
+          <td class="best">78.3%†</td>
         </tr>
       </tbody>
     </table>
+    <p style="font-size:0.82rem;color:#6b7280;margin-top:8px;">* Test 9 style accuracy is measured on the merged WikiArt+ArtEmis subset, not the full validation set, so it is not directly comparable to other tests. &nbsp; † Tests 11–12 use a stratified 50/50 val/test split, so the val set is half the size of tests 1–10.</p>
 
     <div class="chart-row" style="margin-top: 18px;">
       <div class="chart-wrap full">
-        <div class="chart-title">Validation accuracy progression across tests 1 to 8</div>
+        <div class="chart-title">Validation accuracy progression across tests 1 to 12 (style top-1)</div>
         <canvas id="chartAccuracyLine" height="120"></canvas>
       </div>
     </div>
@@ -777,13 +796,60 @@ loss_total = (
         <tr><td><code>emotion_head</code></td><td>7</td><td>Only where emotion label exists</td><td>0.7 fixed (or learned)</td></tr>
       </tbody>
     </table>
+
+    <h3>Why the 85.3% result looks misleading</h3>
+    <p>
+      Test 9 reports a style accuracy of 85.3%, which is much higher than test 8's 76.7%. But these numbers can't be fairly compared.
+      The reason is that test 9 can only evaluate on images that exist in <em>both</em> WikiArt <em>and</em> ArtEmis, meaning only the subset that has a matching emotion label.
+      That subset isn't random: it tends to contain the more famous, well-known paintings that are easier to classify.
+      Rarer styles with fewer famous works are underrepresented in ArtEmis, so they show up less in the evaluation.
+      In other words, the 85.3% is measured on an easier slice of the data, not the full validation set. It's a useful number for tracking how the multitask model is doing internally, but it doesn't mean the model suddenly got 8 points better at style classification overall.
+    </p>
+  </section>
+
+  <!-- SECTION: DINOV2 + LLRD -->
+  <p class="section-label">Tests 11–12: New Backbone</p>
+
+  <section class="panel">
+    <h2>9. DINOv2 and Layer-wise Learning Rate Decay (LLRD)</h2>
+    <p>
+      Tests 11 and 12 introduced a completely different backbone: <strong>DINOv2</strong>. Up to test 10, every model used a ViT trained on ImageNet with standard supervised learning. DINOv2 was trained differently: it learned by comparing images to each other (self-supervised) using 142 million images, without any human-provided labels. That extra training makes its features richer, especially for fine-grained differences like distinguishing art styles that look visually similar.
+    </p>
+
+    <h3>What is LLRD?</h3>
+    <p>
+      LLRD stands for Layer-wise Learning Rate Decay. A transformer model has many layers stacked on top of each other. The first layers learn basic things like edges and textures. The later layers learn more specific, high-level patterns. When fine-tuning, you don't want to change the early layers much because they already have good general knowledge. LLRD solves this by giving each layer a slightly smaller learning rate the deeper you go into the network (i.e. the earlier the layer, the lower the rate).
+    </p>
+
+    <div class="code-box">
+      <div class="code-title">LLRD: earlier transformer blocks get lower learning rates</div>
+      <pre><code class="language-python"># Each transformer block gets a learning rate multiplied by decay^(depth from top)
+llrd_decay = 0.75
+base_lr    = cfg.ft_backbone_lr  # e.g. 1e-4
+
+param_groups = []
+for block_idx, block in enumerate(reversed(model.backbone.blocks)):
+    lr = base_lr * (llrd_decay ** block_idx)
+    param_groups.append({"params": block.parameters(), "lr": lr})
+
+# The later (top) blocks train faster, early blocks train slower</code></pre>
+    </div>
+
+    <h3>Resolution: 336px → 448px</h3>
+    <p>
+      DINOv2 uses patch size 14. At 336px that gives 24×24 = 576 patches per image. Test 12 raised the input to 448px, giving 32×32 = 1024 patches, which gives the model more detail to work with. The test 12 model was warm-started from the test 11 checkpoint rather than starting from scratch, so it didn't need as many epochs to reach a good result.
+    </p>
+
+    <div class="note">
+      Test 12 reached 78.3% val accuracy, the best result across all 12 tests, beating the previous best (test 8, ViT 76.7%) by 1.6 percentage points.
+    </div>
   </section>
 
   <!-- SECTION: RESULTS -->
   <p class="section-label">Results</p>
 
   <section class="panel">
-    <h2>9. Full Results Across All Tests</h2>
+    <h2>10. Full Results Across All Tests</h2>
     <p>
       Here are the actual numbers from every test. Top-1 accuracy means the model's first guess was correct. Top-5 means the correct style was somewhere in the model's 5 best guesses. For a 27-class problem, top-5 at 97.5% is quite strong.
     </p>
@@ -867,10 +933,38 @@ loss_total = (
         <tr>
           <td><span class="pill purple">Test 9</span></td>
           <td>ViT-B/16-384 (multitask)</td>
-          <td colspan="4" style="color:#6b7280; font-style:italic;">Not yet run</td>
+          <td>85.3%*</td>
+          <td>n/a</td>
+          <td>86.1%*</td>
+          <td>n/a</td>
+        </tr>
+        <tr>
+          <td><span class="pill purple">Test 10</span></td>
+          <td>ViT-B/16-384 (style+artist)</td>
+          <td>73.7%</td>
+          <td>n/a</td>
+          <td>n/a</td>
+          <td>n/a</td>
+        </tr>
+        <tr>
+          <td><span class="pill green">Test 11</span></td>
+          <td>DINOv2 ViT-B/14-336</td>
+          <td>74.3%†</td>
+          <td>97.6%</td>
+          <td>73.2%†</td>
+          <td>97.5%</td>
+        </tr>
+        <tr>
+          <td><span class="pill green">Test 12</span></td>
+          <td>DINOv2 ViT-B/14-448</td>
+          <td class="best">78.3%†</td>
+          <td class="best">96.7%</td>
+          <td class="best">77.3%†</td>
+          <td class="best">96.5%</td>
         </tr>
       </tbody>
     </table>
+    <p style="font-size:0.82rem;color:#6b7280;margin-top:8px;">* Test 9 numbers are on the merged WikiArt+ArtEmis eval subset (not the full val set). &nbsp; † Tests 11–12 use a smaller stratified val/test split.</p>
 
     <div class="chart-row" style="margin-top: 18px;">
       <div class="chart-wrap">
@@ -884,7 +978,7 @@ loss_total = (
     </div>
 
     <div class="note">
-      The biggest single jump was between test 5 and test 6, where switching to a longer training run with early stopping added about 6.5 percentage points. Going from test 1 to test 8 overall is a 23.7 percentage point improvement.
+      The biggest single jump was between test 5 and test 6 (+6.5 pp), which came from training longer with proper early stopping. The second biggest was between test 8 and test 12 (+1.6 pp), from switching to DINOv2 at a higher resolution. Going from test 1 to test 12 overall is a 25.3 percentage point improvement.
     </div>
   </section>
 
@@ -892,7 +986,7 @@ loss_total = (
   <p class="section-label">Responsible Development</p>
 
   <section class="panel">
-    <h2>10. Security, Privacy, Ethics, and Compliance</h2>
+    <h2>11. Security, Privacy, Ethics, and Compliance</h2>
     <p>
       The model training side is well in hand, but if this ever turns into a real app where users upload images, there are extra things that need to be in place. Here's an honest breakdown of what's already covered in the notebooks and what would still need to be built.
     </p>
@@ -931,17 +1025,19 @@ loss_total = (
 
   <!-- SECTION: CONCLUSION -->
   <section class="panel">
-    <h2>11. Conclusion</h2>
+    <h2>12. Conclusion</h2>
     <p>
-      Going from 53% to 76.7% accuracy across 8 experiments wasn't one big leap, it was a bunch of smaller ones that added up.
+      Going from 53% to 78.3% accuracy across 12 experiments wasn't one big leap. It was a series of smaller improvements that stacked up.
       The early tests were mostly about getting the pipeline right: proper data loading, a working training loop, saving checkpoints.
-      Once that was stable, it made sense to try a stronger model (ViT instead of ResNet), and once that was in place, the focus shifted to getting the most out of training through longer runs, better augmentation, and smarter loss functions.
+      Once that was stable, the focus shifted to stronger models, then better training techniques, then a completely different backbone.
     </p>
     <p>
-      The jump from test 5 to test 6 was the biggest single improvement, which came mostly from just training longer with proper early stopping rather than any exotic technique. That's a good reminder that boring things like training duration and patience settings often matter more than the fancy stuff.
+      The biggest single jump was between test 5 and test 6, which came mostly from training longer with proper early stopping, not from any exotic technique.
+      That's a reminder that basic things like training duration often matter more than the fancy stuff.
     </p>
     <p>
-      Test 9 is still to run, but the data prep for it is done. If the multitask approach works as expected, the style accuracy should should improve a bit.
+      The second biggest improvement came from switching to DINOv2 in tests 11 and 12. Using a self-supervised backbone pretrained on far more data, combined with a higher input resolution, pushed the best result to 78.3%, which is 1.6 points above the previous best from test 8.
+      The multitask experiments (tests 9 and 10) showed that adding auxiliary tasks can help the model learn richer features, though the direct style accuracy numbers are harder to compare because they use different evaluation setups.
     </p>
   </section>
 
@@ -955,9 +1051,9 @@ loss_total = (
   Chart.defaults.font.size = 12;
   Chart.defaults.color = "#4b5563";
 
-  const tests = ["T1", "T2", "T3", "T4", "T5", "T6", "T7", "T8"];
+  const tests = ["T1", "T2", "T3", "T4", "T5", "T6", "T7", "T8", "T10", "T11", "T12"];
 
-  // Chart 1: Accuracy progression line chart (already in section 3)
+  // Chart 1: Accuracy progression line chart (T9 excluded, different eval set)
   new Chart(document.getElementById("chartAccuracyLine"), {
     type: "line",
     data: {
@@ -965,10 +1061,10 @@ loss_total = (
       datasets: [
         {
           label: "Val Top-1 accuracy",
-          data: [53.0, 57.8, 63.2, 66.9, 69.3, 75.9, 76.5, 76.7],
+          data: [53.0, 57.8, 63.2, 66.9, 69.3, 75.9, 76.5, 76.7, 73.7, 74.3, 78.3],
           borderColor: "#1d4ed8",
           backgroundColor: "rgba(29,78,216,0.08)",
-          pointBackgroundColor: "#1d4ed8",
+          pointBackgroundColor: ["#1d4ed8","#1d4ed8","#1d4ed8","#1d4ed8","#1d4ed8","#1d4ed8","#1d4ed8","#1d4ed8","#7c3aed","#16a34a","#16a34a"],
           tension: 0.3,
           fill: true,
           borderWidth: 2.5,
@@ -996,22 +1092,22 @@ loss_total = (
     }
   });
 
-  // Chart 2: Top-1 vs Top-5 grouped bar (tests 4-8 since top-5 was only tracked from test 4)
+  // Chart 2: Top-1 vs Top-5 grouped bar
   new Chart(document.getElementById("chartTop1Top5"), {
     type: "bar",
     data: {
-      labels: ["T1", "T2", "T3", "T4", "T5", "T6", "T7", "T8"],
+      labels: ["T1", "T2", "T3", "T4", "T5", "T6", "T7", "T8", "T10", "T11", "T12"],
       datasets: [
         {
           label: "Top-1",
-          data: [53.0, 57.8, 63.2, 66.9, 69.3, 75.9, 76.5, 76.7],
+          data: [53.0, 57.8, 63.2, 66.9, 69.3, 75.9, 76.5, 76.7, 73.7, 74.3, 78.3],
           backgroundColor: "#3b82f6",
           borderRadius: 5,
           barPercentage: 0.6,
         },
         {
           label: "Top-5",
-          data: [null, null, null, 76.6, 79.2, 97.6, 97.6, 97.5],
+          data: [null, null, null, 76.6, 79.2, 97.6, 97.6, 97.5, null, 97.6, 96.7],
           backgroundColor: "#93c5fd",
           borderRadius: 5,
           barPercentage: 0.6,
@@ -1043,10 +1139,11 @@ loss_total = (
       labels: tests,
       datasets: [{
         label: "Gain vs test 1 baseline (%)",
-        data: [0, 4.8, 10.2, 13.9, 16.3, 22.9, 23.5, 23.7],
+        data: [0, 4.8, 10.2, 13.9, 16.3, 22.9, 23.5, 23.7, 20.7, 21.3, 25.3],
         backgroundColor: [
           "#dbeafe","#bfdbfe","#93c5fd","#60a5fa",
-          "#3b82f6","#2563eb","#1d4ed8","#1e40af"
+          "#3b82f6","#2563eb","#1d4ed8","#1e40af",
+          "#ede9fe","#bbf7d0","#16a34a"
         ],
         borderRadius: 5,
         borderSkipped: false,
@@ -1061,7 +1158,7 @@ loss_total = (
       scales: {
         y: {
           min: 0,
-          max: 28,
+          max: 30,
           ticks: { callback: v => "+" + v + " pp" },
           grid: { color: "#e5e7eb" }
         },

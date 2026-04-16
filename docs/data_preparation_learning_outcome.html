@@ -314,7 +314,7 @@
     </p>
     <div>
       <span class="badge">3 datasets</span>
-      <span class="badge">9 experiment notebooks</span>
+      <span class="badge">12 experiment notebooks</span>
       <span class="badge">27 art styles</span>
       <span class="badge">~81k WikiArt images</span>
       <span class="badge">Multitask learning</span>
@@ -355,6 +355,16 @@
           <td><span class="pill purple">Multitask (test 9)</span><br/>ArtEmis merge</td>
           <td>Merged WikiArt and ArtEmis on a normalised painting name key. Multiple emotion annotations per painting were resolved with a majority vote.</td>
           <td>Dataset that returns style, artist <em>and</em> emotion labels per image. One shared backbone trained on all three tasks at once.</td>
+        </tr>
+        <tr>
+          <td><span class="pill purple">Style+Artist (test 10)</span><br/>Dedicated artist CSVs</td>
+          <td>Dropped emotion, kept style+artist only. Used dedicated <code>artist_train.csv</code> / <code>artist_val.csv</code> from WikiArt instead of extracting artist names from file paths.</td>
+          <td>Two-task dataset with style and artist labels. Artist label set to -1 when missing, so the artist loss is skipped for those rows.</td>
+        </tr>
+        <tr>
+          <td><span class="pill green">Val/Test split (tests 11–12)</span><br/>Stratified holdout</td>
+          <td>Split the existing WikiArt validation set 50/50 into a validation set and a separate held-out test set using stratified sampling, so final numbers are reported on data the model never saw during hyper-parameter tuning.</td>
+          <td>Three DataLoaders per run: <code>train_loader</code>, <code>val_loader</code> (used for early stopping), <code>test_loader</code> (final evaluation only).</td>
         </tr>
       </tbody>
     </table>
@@ -540,12 +550,12 @@ df.to_csv(output_csv, index=False)</code></pre>
   </section>
 
   <!-- ── SECTION: WIKIART PER TEST ── -->
-  <p class="section-label">WikiArt Experiment Preparation (Tests 1 – 9)</p>
+  <p class="section-label">WikiArt Experiment Preparation (Tests 1 – 12)</p>
 
   <section class="panel">
     <h2>5. WikiArt: Preparation in the Experiment Notebooks</h2>
     <p>
-      WikiArt is the main dataset I kept coming back to across all 9 tests. The core prep steps were the same every time,
+      WikiArt is the main dataset I kept coming back to across all 12 tests. The core prep steps were the same every time,
       but each notebook tweaked or extended them — mainly the augmentation and how thoroughly bad images were caught.
     </p>
 
@@ -658,6 +668,21 @@ train_transform = transforms.Compose([
           <td><span class="pill purple">Test 9</span></td>
           <td>ViT-B/16-384</td>
           <td>Multitask: added artist + emotion heads, ArtEmis emotion data merged in</td>
+        </tr>
+        <tr>
+          <td><span class="pill purple">Test 10</span></td>
+          <td>ViT-B/16-384</td>
+          <td>Style+artist only (emotion dropped); artist labels now from dedicated <code>artist_train/val.csv</code> instead of file paths; uncertainty weighting between tasks</td>
+        </tr>
+        <tr>
+          <td><span class="pill green">Test 11</span></td>
+          <td>DINOv2 ViT-B/14 (336px)</td>
+          <td>New backbone (DINOv2, 336px input); validation set split 50/50 into val + held-out test set using stratified sampling; same RandAugment pipeline</td>
+        </tr>
+        <tr>
+          <td><span class="pill green">Test 12</span></td>
+          <td>DINOv2 ViT-B/14 (448px)</td>
+          <td>Resolution raised to 448px (1024 patches); warm-started from test 11 checkpoint; same val/test split and augmentation pipeline as test 11</td>
         </tr>
       </tbody>
     </table>
@@ -776,6 +801,16 @@ else:
           <td>ArtEmis / test 9</td>
           <td>Many paintings in ArtEmis have emotion annotations from multiple different people. I resolved those by majority vote. Paintings with no annotations at all were kept but flagged as <code>emotion = -1</code> so training could still use them for the style and artist tasks.</td>
         </tr>
+        <tr>
+          <td>Dedicated artist CSV sourcing</td>
+          <td>WikiArt test 10</td>
+          <td>Test 9 extracted artist names directly from the file path structure. From test 10 onwards I switched to using WikiArt's own <code>artist_train.csv</code> / <code>artist_val.csv</code> files, which are the authoritative source for artist labels and avoid any path-parsing errors.</td>
+        </tr>
+        <tr>
+          <td>Stratified val/test split</td>
+          <td>WikiArt tests 11–12</td>
+          <td>The original validation set was split 50/50 into a proper validation set (used for early stopping) and a separate held-out test set (only used for final reporting). Stratified sampling ensured every class was represented in both halves at the same proportion.</td>
+        </tr>
       </tbody>
     </table>
   </section>
@@ -812,17 +847,18 @@ else:
       Looking back at all the prep work, the biggest thing I took away is that data preparation is where a lot of the real work actually happens.
       It's easy to think you can just download a dataset and start training, but in practice there are always files missing,
       column names that don't match, painting names that are spelled slightly differently depending on the source, images that exist on disk
-      but crash when you try to open them are all kinds of small things that add up.
+      but crash when you try to open them, all kinds of small things that add up.
     </p>
     <p>
       Across this project I worked with three separate datasets (WikiArt, ArtBench, ArtEmis) that each had their own issues.
       ArtBench needed a full download pipeline with retry logic. ArtEmis needed a path-matching step before it could even be used.
-      WikiArt was the most straightforward but still needed consistent cleaning and label validation across all 9 experiments.
+      WikiArt was the most straightforward but still needed consistent cleaning and label validation across all 12 experiments.
     </p>
     <p>
       By test 9 the data pipeline had grown quite a bit: merging two datasets, handling multi-labels,
       dealing with images that only have some labels available, and keeping all of that consistent across train and validation.
-      Getting this right is what made it possible to actually train a multitask model without constantly running into bugs or garbage outputs.
+      Tests 10 through 12 refined things further switching to authoritative artist CSVs, properly splitting the validation set
+      into a val and a held-out test set, and scaling up the input resolution, so the reported numbers are increasingly trustworthy.
     </p>
   </section>
 
