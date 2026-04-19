@@ -28,7 +28,6 @@ async function analyzeImage(file) {
     style: data.style,
     artist: data.artist,
     top5: data.top5,
-    artistTop5: data.artist_top5,
   }
 }
 

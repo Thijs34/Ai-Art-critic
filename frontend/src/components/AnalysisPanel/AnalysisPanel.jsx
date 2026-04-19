@@ -67,7 +67,6 @@ export default function AnalysisPanel({ imageUrl, imageName, analysis, onReset }
   const style = analysis.style
   const artist = analysis.artist ?? { label: 'Unknown Artist', confidence: 0 }
   const top5 = analysis.top5 ?? []
-  const artistTop5 = analysis.artistTop5 ?? []
 
   return (
     <div className="analysis-panel">
@@ -153,25 +152,6 @@ export default function AnalysisPanel({ imageUrl, imageName, analysis, onReset }
           <AnalysisCard label="Style Breakdown" icon="◐" index={6}>
             <div className="top5-list">
               {top5.map((item, i) => (
-                <div key={item.label} className="top5-row">
-                  <span className="top5-row__rank">{i + 1}</span>
-                  <span className="top5-row__label">{item.label}</span>
-                  <div className="top5-row__track">
-                    <div
-                      className="top5-row__fill"
-                      style={{ '--pct': `${item.confidence}%`, animationDelay: `${0.4 + i * 0.1}s` }}
-                    />
-                  </div>
-                  <span className="top5-row__pct">{item.confidence}%</span>
-                </div>
-              ))}
-            </div>
-          </AnalysisCard>
-
-          {/* Top-5 artist breakdown — live */}
-          <AnalysisCard label="Artist Breakdown" icon="◓" index={7}>
-            <div className="top5-list">
-              {artistTop5.map((item, i) => (
                 <div key={item.label} className="top5-row">
                   <span className="top5-row__rank">{i + 1}</span>
                   <span className="top5-row__label">{item.label}</span>
