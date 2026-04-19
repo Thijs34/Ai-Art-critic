@@ -24,12 +24,11 @@ async function analyzeImage(file) {
 
   const data = await res.json()
 
-  // Only return what the model actually produces.
-  // Other fields (period, emotion, context, artist) will be added
-  // once those models are trained.
   return {
     style: data.style,
-    top5:  data.top5,
+    artist: data.artist,
+    top5: data.top5,
+    artistTop5: data.artist_top5,
   }
 }
 
