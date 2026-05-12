@@ -6,6 +6,8 @@ datasets/Artbench/images/
 datasets/AVA/images/
 # Ignore all images in WikiArt (all subfolders)
 datasets/Wikiart/**/
+retrieval_index/art_chat_embedding_cache.json
+retrieval_index/art_chat_embedding_cache.tmp
 
 # Python / backend
 __pycache__/

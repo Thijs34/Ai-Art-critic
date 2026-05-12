@@ -1,0 +1,232 @@
+import { useMemo, useRef, useState } from 'react'
+import './ArtworkChat.css'
+
+const API_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:5000'
+
+const STARTERS = [
+  'What should I notice first?',
+  'How does the composition affect the mood?',
+  'Talk to me about the brushwork.',
+]
+
+function renderInlineFormatting(text, keyPrefix) {
+  return text.split(/(\*\*[^*]+\*\*|\*[^*\n]+\*)/g).map((part, index) => {
+    const key = `${keyPrefix}-inline-${index}`
+
+    if (part.startsWith('**') && part.endsWith('**')) {
+      return <strong key={key}>{part.slice(2, -2)}</strong>
+    }
+
+    if (part.startsWith('*') && part.endsWith('*')) {
+      return <em key={key}>{part.slice(1, -1)}</em>
+    }
+
+    return part
+  })
+}
+
+function renderFormattedMessage(content) {
+  const blocks = String(content || '')
+    .replace(/\r\n/g, '\n')
+    .split(/\n{2,}/)
+    .map((block) => block.trim())
+    .filter(Boolean)
+
+  if (blocks.length === 0) return null
+
+  return blocks.map((block, blockIndex) => {
+    const lines = block.split('\n').map((line) => line.trim()).filter(Boolean)
+    const unorderedItems = lines
+      .map((line) => line.match(/^[-*]\s+(.+)$/))
+      .filter(Boolean)
+    const orderedItems = lines
+      .map((line) => line.match(/^\d+[.)]\s+(.+)$/))
+      .filter(Boolean)
+
+    if (unorderedItems.length === lines.length) {
+      return (
+        <ul key={`block-${blockIndex}`} className="artwork-chat__list">
+          {unorderedItems.map((match, itemIndex) => (
+            <li key={`block-${blockIndex}-item-${itemIndex}`}>
+              {renderInlineFormatting(match[1], `block-${blockIndex}-item-${itemIndex}`)}
+            </li>
+          ))}
+        </ul>
+      )
+    }
+
+    if (orderedItems.length === lines.length) {
+      return (
+        <ol key={`block-${blockIndex}`} className="artwork-chat__list">
+          {orderedItems.map((match, itemIndex) => (
+            <li key={`block-${blockIndex}-item-${itemIndex}`}>
+              {renderInlineFormatting(match[1], `block-${blockIndex}-item-${itemIndex}`)}
+            </li>
+          ))}
+        </ol>
+      )
+    }
+
+    return (
+      <p key={`block-${blockIndex}`} className="artwork-chat__paragraph">
+        {lines.map((line, lineIndex) => (
+          <span key={`block-${blockIndex}-line-${lineIndex}`}>
+            {lineIndex > 0 && <br />}
+            {renderInlineFormatting(line, `block-${blockIndex}-line-${lineIndex}`)}
+          </span>
+        ))}
+      </p>
+    )
+  })
+}
+
+function toChatAnalysis(analysis) {
+  return {
+    style: analysis.style,
+    artist: analysis.artist,
+    top5: analysis.top5,
+    style_topk: analysis.styleTopk,
+    artist_topk: analysis.artistTopk,
+    final_artist: analysis.finalArtist,
+    candidates: analysis.candidates,
+    retrieval_hits: analysis.retrievalHits,
+    llm: analysis.llm,
+    confidence: analysis.confidence,
+    used_open_world_llm: analysis.usedOpenWorldLlm,
+    used_openai_style: analysis.usedOpenAiStyle,
+    timePeriod: analysis.timePeriod,
+    emotional_tone: analysis.emotionalTone,
+    title: analysis.artworkTitle,
+    context: analysis.context,
+  }
+}
+
+export default function ArtworkChat({ analysis }) {
+  const [messages, setMessages] = useState([
+    {
+      role: 'assistant',
+      content: 'Ask me about the mood, brushwork, composition, symbolism, technique, or historical context of this piece.',
+    },
+  ])
+  const [input, setInput] = useState('')
+  const [sessionId, setSessionId] = useState(null)
+  const [isSending, setIsSending] = useState(false)
+  const [error, setError] = useState(null)
+  const inputRef = useRef(null)
+  const chatAnalysis = useMemo(() => toChatAnalysis(analysis), [analysis])
+
+  async function sendMessage(text) {
+    const message = text.trim()
+    if (!message || isSending) return
+
+    setMessages((prev) => [...prev, { role: 'user', content: message }])
+    setInput('')
+    setError(null)
+    setIsSending(true)
+
+    try {
+      const res = await fetch(`${API_URL}/api/chat`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          message,
+          analysis: chatAnalysis,
+          session_id: sessionId,
+        }),
+      })
+
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}))
+        throw new Error(err.error || `Server error ${res.status}`)
+      }
+
+      const data = await res.json()
+      setSessionId(data.session_id)
+      setMessages((prev) => [...prev, {
+        role: 'assistant',
+        content: data.answer,
+        references: data.references ?? [],
+      }])
+    } catch (err) {
+      console.error('Chat failed:', err)
+      setError(err.message)
+      setMessages((prev) => [...prev, {
+        role: 'assistant',
+        content: 'I could not reach the critic voice right now, but the analysis above is still available.',
+      }])
+    } finally {
+      setIsSending(false)
+      inputRef.current?.focus()
+    }
+  }
+
+  function handleSubmit(event) {
+    event.preventDefault()
+    sendMessage(input)
+  }
+
+  return (
+    <section className="artwork-chat" aria-label="Artwork conversation">
+      <div className="artwork-chat__header">
+        <div>
+          <h3 className="artwork-chat__title">Discuss the Artwork</h3>
+          <p className="artwork-chat__sub">Grounded in this analysis</p>
+        </div>
+        <div className="artwork-chat__status" aria-hidden="true">
+          {isSending ? 'Thinking' : 'Ready'}
+        </div>
+      </div>
+
+      <div className="artwork-chat__messages" aria-live="polite">
+        {messages.map((message, index) => (
+          <div
+            key={`${message.role}-${index}`}
+            className={`artwork-chat__message artwork-chat__message--${message.role}`}
+          >
+            <div className="artwork-chat__content">
+              {renderFormattedMessage(message.content)}
+            </div>
+            {message.references?.length > 0 && (
+              <div className="artwork-chat__refs">
+                {message.references.slice(0, 3).map((ref) => (
+                  <span key={`${ref.source}-${ref.title}`}>
+                    {ref.type ? `${ref.type}: ` : ''}{ref.title}
+                  </span>
+                ))}
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
+
+      <div className="artwork-chat__starters" aria-label="Suggested questions">
+        {STARTERS.map((starter) => (
+          <button
+            key={starter}
+            type="button"
+            className="artwork-chat__starter"
+            onClick={() => sendMessage(starter)}
+            disabled={isSending}
+          >
+            {starter}
+          </button>
+        ))}
+      </div>
+
+      <form className="artwork-chat__form" onSubmit={handleSubmit}>
+        <input
+          ref={inputRef}
+          className="artwork-chat__input"
+          value={input}
+          onChange={(event) => setInput(event.target.value)}
+          placeholder="Ask about mood, technique, symbols..."
+          disabled={isSending}
+        />
+        <button className="artwork-chat__send" type="submit" disabled={!input.trim() || isSending}>
+          Send
+        </button>
+      </form>
+      {error && <p className="artwork-chat__error">{error}</p>}
+    </section>
+  )
+}

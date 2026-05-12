@@ -36,9 +36,26 @@
 }
 
 .analysis-card__icon {
-  font-size: 14px;
-  line-height: 1;
-  opacity: 0.7;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  color: var(--gold-light);
+  background: var(--gold-dim);
+  border: 1px solid rgba(201, 168, 76, 0.22);
+  border-radius: 6px;
+  flex-shrink: 0;
+}
+
+.analysis-card__icon svg {
+  width: 14px;
+  height: 14px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+  stroke-linejoin: round;
 }
 
 .analysis-card__label {
@@ -62,10 +79,31 @@
   font-weight: 600;
   color: var(--text-primary);
   line-height: 1.2;
+  overflow-wrap: anywhere;
 }
 
 .card-value--large {
   font-size: 32px;
+}
+
+.card-note {
+  font-size: 14px;
+  line-height: 1.65;
+  color: var(--text-secondary);
+}
+
+.card-source {
+  display: inline-flex;
+  margin-top: 12px;
+  padding: 5px 10px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg-elevated);
+  color: var(--text-muted);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
 }
 
 /* Confidence bar */

@@ -110,7 +110,7 @@
   padding: 36px 40px 60px;
   display: flex;
   flex-direction: column;
-  gap: 24px;
+  gap: 14px;
 }
 
 .results-header {
@@ -140,8 +140,7 @@
   gap: 14px;
 }
 
-/* Style Breakdown spans both columns */
-.results-grid > .analysis-card:last-child {
+.analysis-card--wide {
   grid-column: 1 / -1;
 }
 
@@ -211,43 +210,6 @@
   background: var(--border);
   flex-shrink: 0;
   animation: badge-pulse 2.5s ease-in-out infinite;
-}
-
-/* ── Score Ring ── */
-.score-ring {
-  position: relative;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 96px;
-  height: 96px;
-  margin-top: 4px;
-}
-
-.score-ring svg {
-  position: absolute;
-  inset: 0;
-}
-
-.score-ring__text {
-  position: relative;
-  z-index: 1;
-  display: flex;
-  align-items: baseline;
-  gap: 3px;
-}
-
-.score-ring__value {
-  font-family: var(--font-serif);
-  font-size: 24px;
-  font-weight: 700;
-  color: var(--text-primary);
-  line-height: 1;
-}
-
-.score-ring__denom {
-  font-size: 11px;
-  color: var(--text-muted);
 }
 
 /* ── Responsive ── */

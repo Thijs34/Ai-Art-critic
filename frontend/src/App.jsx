@@ -12,7 +12,7 @@ async function analyzeImage(file) {
   const formData = new FormData()
   formData.append('image', file)
 
-  const res = await fetch(`${API_URL}/api/analyze`, {
+  const res = await fetch(`${API_URL}/api/predict-artist-open-world`, {
     method: 'POST',
     body: formData,
   })
@@ -28,6 +28,20 @@ async function analyzeImage(file) {
     style: data.style,
     artist: data.artist,
     top5: data.top5,
+    styleTopk: data.style_topk ?? [],
+    artistTopk: data.artist_topk ?? [],
+    finalArtist: data.final_artist ?? data.artist?.label ?? null,
+    candidates: data.candidates ?? [],
+    retrievalHits: data.retrieval_hits ?? [],
+    llm: data.llm ?? null,
+    llmError: data.llm_error ?? null,
+    confidence: data.confidence ?? null,
+    usedOpenWorldLlm: data.used_open_world_llm ?? false,
+    usedOpenAiStyle: data.used_openai_style ?? false,
+    timePeriod: data.time_period ?? null,
+    emotionalTone: data.emotional_tone ?? null,
+    artworkTitle: data.title ?? null,
+    context: data.context ?? null,
   }
 }
 
