@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import './ArtworkChat.css'
 
 const API_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:5000'
@@ -8,6 +8,10 @@ const STARTERS = [
   'How does the composition affect the mood?',
   'Talk to me about the brushwork.',
 ]
+
+function createMessageId() {
+  return globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(16).slice(2)}`
+}
 
 function renderInlineFormatting(text, keyPrefix) {
   return text.split(/(\*\*[^*]+\*\*|\*[^*\n]+\*)/g).map((part, index) => {
@@ -104,22 +108,109 @@ function toChatAnalysis(analysis) {
 export default function ArtworkChat({ analysis }) {
   const [messages, setMessages] = useState([
     {
+      id: createMessageId(),
       role: 'assistant',
       content: 'Ask me about the mood, brushwork, composition, symbolism, technique, or historical context of this piece.',
+      visibleContent: 'Ask me about the mood, brushwork, composition, symbolism, technique, or historical context of this piece.',
     },
   ])
   const [input, setInput] = useState('')
   const [sessionId, setSessionId] = useState(null)
   const [isSending, setIsSending] = useState(false)
+  const [isFullscreen, setIsFullscreen] = useState(false)
   const [error, setError] = useState(null)
   const inputRef = useRef(null)
+  const messagesRef = useRef(null)
   const chatAnalysis = useMemo(() => toChatAnalysis(analysis), [analysis])
+
+  useEffect(() => {
+    const streamingMessage = messages.find((message) => (
+      message.role === 'assistant'
+      && message.isStreaming
+      && !message.isPending
+      && message.visibleContent !== message.content
+    ))
+
+    if (!streamingMessage) return undefined
+
+    const timeout = window.setTimeout(() => {
+      setMessages((prev) => prev.map((message) => {
+        if (message.id !== streamingMessage.id) return message
+
+        const currentLength = message.visibleContent?.length ?? 0
+        const remaining = message.content.slice(currentLength)
+        const nextBreak = remaining.search(/[\s.,;:!?)]/)
+        const chunkSize = nextBreak >= 0 ? Math.max(nextBreak + 1, 2) : Math.min(remaining.length, 4)
+        const nextContent = message.content.slice(0, currentLength + chunkSize)
+
+        return {
+          ...message,
+          visibleContent: nextContent,
+          isStreaming: nextContent.length < message.content.length,
+        }
+      }))
+    }, 28)
+
+    return () => window.clearTimeout(timeout)
+  }, [messages])
+
+  useEffect(() => {
+    const messageBox = messagesRef.current
+    if (!messageBox) return
+
+    messageBox.scrollTo({
+      top: messageBox.scrollHeight,
+      behavior: 'smooth',
+    })
+  }, [messages])
+
+  useEffect(() => {
+    document.body.classList.toggle('artwork-chat-body--fullscreen', isFullscreen)
+
+    return () => {
+      document.body.classList.remove('artwork-chat-body--fullscreen')
+    }
+  }, [isFullscreen])
+
+  useEffect(() => {
+    function handleKeyDown(event) {
+      if (event.key === 'Escape') {
+        setIsFullscreen(false)
+      }
+    }
+
+    if (isFullscreen) {
+      window.addEventListener('keydown', handleKeyDown)
+    }
+
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown)
+    }
+  }, [isFullscreen])
 
   async function sendMessage(text) {
     const message = text.trim()
     if (!message || isSending) return
 
-    setMessages((prev) => [...prev, { role: 'user', content: message }])
+    const assistantMessageId = createMessageId()
+
+    setMessages((prev) => [
+      ...prev,
+      {
+        id: createMessageId(),
+        role: 'user',
+        content: message,
+        visibleContent: message,
+      },
+      {
+        id: assistantMessageId,
+        role: 'assistant',
+        content: '',
+        visibleContent: '',
+        isPending: true,
+        isStreaming: true,
+      },
+    ])
     setInput('')
     setError(null)
     setIsSending(true)
@@ -142,18 +233,32 @@ export default function ArtworkChat({ analysis }) {
 
       const data = await res.json()
       setSessionId(data.session_id)
-      setMessages((prev) => [...prev, {
-        role: 'assistant',
-        content: data.answer,
-        references: data.references ?? [],
-      }])
+      setMessages((prev) => prev.map((chatMessage) => {
+        if (chatMessage.id !== assistantMessageId) return chatMessage
+
+        return {
+          ...chatMessage,
+          content: data.answer,
+          visibleContent: '',
+          references: data.references ?? [],
+          isPending: false,
+          isStreaming: true,
+        }
+      }))
     } catch (err) {
       console.error('Chat failed:', err)
       setError(err.message)
-      setMessages((prev) => [...prev, {
-        role: 'assistant',
-        content: 'I could not reach the critic voice right now, but the analysis above is still available.',
-      }])
+      setMessages((prev) => prev.map((chatMessage) => {
+        if (chatMessage.id !== assistantMessageId) return chatMessage
+
+        return {
+          ...chatMessage,
+          content: 'I could not reach the critic voice right now, but the analysis above is still available.',
+          visibleContent: '',
+          isPending: false,
+          isStreaming: true,
+        }
+      }))
     } finally {
       setIsSending(false)
       inputRef.current?.focus()
@@ -166,27 +271,49 @@ export default function ArtworkChat({ analysis }) {
   }
 
   return (
-    <section className="artwork-chat" aria-label="Artwork conversation">
+    <section className={`artwork-chat${isFullscreen ? ' artwork-chat--fullscreen' : ''}`} aria-label="Artwork conversation">
       <div className="artwork-chat__header">
         <div>
           <h3 className="artwork-chat__title">Discuss the Artwork</h3>
           <p className="artwork-chat__sub">Grounded in this analysis</p>
         </div>
-        <div className="artwork-chat__status" aria-hidden="true">
-          {isSending ? 'Thinking' : 'Ready'}
+        <div className="artwork-chat__header-actions">
+          <div className="artwork-chat__status" aria-hidden="true">
+            {isSending ? 'Live AI' : 'Ready'}
+          </div>
+          <button
+            className={`artwork-chat__fullscreen-toggle${isFullscreen ? ' artwork-chat__fullscreen-toggle--active' : ''}`}
+            type="button"
+            onClick={() => setIsFullscreen((current) => !current)}
+            aria-label={isFullscreen ? 'Exit fullscreen chat' : 'Open fullscreen chat'}
+            title={isFullscreen ? 'Exit fullscreen' : 'Fullscreen'}
+          >
+            <span className="artwork-chat__fullscreen-icon" aria-hidden="true" />
+          </button>
         </div>
       </div>
 
-      <div className="artwork-chat__messages" aria-live="polite">
+      <div ref={messagesRef} className="artwork-chat__messages" aria-live="polite">
         {messages.map((message, index) => (
           <div
-            key={`${message.role}-${index}`}
-            className={`artwork-chat__message artwork-chat__message--${message.role}`}
+            key={message.id ?? `${message.role}-${index}`}
+            className={`artwork-chat__message artwork-chat__message--${message.role}${message.isStreaming ? ' artwork-chat__message--live' : ''}`}
           >
             <div className="artwork-chat__content">
-              {renderFormattedMessage(message.content)}
+              {message.isPending ? (
+                <span className="artwork-chat__typing" aria-label="AI is thinking">
+                  <span />
+                  <span />
+                  <span />
+                </span>
+              ) : (
+                <>
+                  {renderFormattedMessage(message.visibleContent ?? message.content)}
+                  {message.isStreaming && <span className="artwork-chat__cursor" aria-hidden="true" />}
+                </>
+              )}
             </div>
-            {message.references?.length > 0 && (
+            {!message.isStreaming && message.references?.length > 0 && (
               <div className="artwork-chat__refs">
                 {message.references.slice(0, 3).map((ref) => (
                   <span key={`${ref.source}-${ref.title}`}>
