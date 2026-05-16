@@ -1,0 +1,597 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AI Art Critic - Conversational RAG Integration Report</title>
+  <style>
+    :root {
+      --bg: #f0f4fb;
+      --panel: #ffffff;
+      --text: #1f2937;
+      --muted: #4b5563;
+      --line: #dbe3ef;
+      --accent: #1d4ed8;
+      --accent-soft: #eff6ff;
+      --green: #16a34a;
+      --green-soft: #f0fdf4;
+      --orange: #ea580c;
+      --orange-soft: #fff7ed;
+      --purple: #7c3aed;
+      --purple-soft: #f5f3ff;
+      --teal: #0d9488;
+      --teal-soft: #f0fdfa;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: "Segoe UI", Roboto, Arial, sans-serif;
+      color: var(--text);
+      background: var(--bg);
+      line-height: 1.65;
+      font-size: 0.97rem;
+    }
+
+    .container {
+      max-width: 1020px;
+      margin: 28px auto;
+      padding: 0 18px 32px;
+    }
+
+    .hero {
+      background: linear-gradient(135deg, #1d4ed8 0%, #3b82f6 60%, #60a5fa 100%);
+      color: #fff;
+      border-radius: 16px;
+      padding: 28px 30px 22px;
+      margin-bottom: 18px;
+    }
+    .hero h1 { font-size: 1.8rem; margin: 0 0 8px; color: #fff; }
+    .hero p { margin: 5px 0; opacity: 0.92; }
+    .badge {
+      display: inline-block;
+      background: rgba(255,255,255,0.16);
+      border: 1px solid rgba(255,255,255,0.32);
+      border-radius: 20px;
+      padding: 3px 12px;
+      font-size: 0.82rem;
+      margin: 6px 4px 0 0;
+    }
+
+    .section-label {
+      font-size: 0.75rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: #6b7280;
+      margin: 24px 0 4px;
+    }
+
+    .panel {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 14px;
+      padding: 20px 22px;
+      margin-top: 16px;
+    }
+
+    h2 {
+      font-size: 1.18rem;
+      color: #0f2f7a;
+      margin: 0 0 10px;
+      border-bottom: 2px solid var(--line);
+      padding-bottom: 6px;
+    }
+    h3 { font-size: 1.0rem; color: #1d4ed8; margin: 14px 0 5px; }
+    p { margin: 6px 0; }
+    ul { margin: 8px 0 0 18px; }
+    li { margin: 4px 0; }
+
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: 12px;
+      margin-top: 12px;
+    }
+    .stat-card {
+      border-radius: 11px;
+      padding: 14px 16px;
+      border: 1px solid var(--line);
+    }
+    .stat-card.blue { background: var(--accent-soft); border-color: #bfdbfe; }
+    .stat-card.green { background: var(--green-soft); border-color: #bbf7d0; }
+    .stat-card.orange { background: var(--orange-soft); border-color: #fed7aa; }
+    .stat-card.purple { background: var(--purple-soft); border-color: #ddd6fe; }
+    .stat-card.teal { background: var(--teal-soft); border-color: #99f6e4; }
+    .stat-card .num {
+      font-size: 1.55rem;
+      font-weight: 700;
+      line-height: 1.1;
+    }
+    .stat-card .label { font-size: 0.82rem; color: var(--muted); margin-top: 2px; }
+
+    .flow {
+      margin: 10px 0 0;
+      padding: 0;
+      list-style: none;
+      counter-reset: step;
+    }
+    .flow li {
+      counter-increment: step;
+      background: #fafcff;
+      border: 1px solid #e4eaf5;
+      border-radius: 10px;
+      padding: 10px 12px 10px 44px;
+      margin: 8px 0;
+      position: relative;
+    }
+    .flow li::before {
+      content: counter(step);
+      position: absolute;
+      left: 12px;
+      top: 10px;
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      background: #dbeafe;
+      color: #1e3a8a;
+      font-weight: 700;
+      display: grid;
+      place-items: center;
+      font-size: 0.84rem;
+    }
+
+    .diagram {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 10px;
+      margin-top: 12px;
+    }
+    .diagram .box {
+      background: #fafbff;
+      border: 1px solid var(--line);
+      border-radius: 11px;
+      padding: 12px;
+      text-align: center;
+      min-height: 92px;
+    }
+    .diagram .box strong {
+      color: #0f2f7a;
+      display: block;
+      margin-bottom: 4px;
+    }
+    .diagram .arrow {
+      color: #64748b;
+      font-size: 1.4rem;
+      margin-top: 4px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 10px;
+      font-size: 0.92rem;
+    }
+    th, td {
+      border: 1px solid var(--line);
+      padding: 8px 10px;
+      vertical-align: top;
+      text-align: left;
+    }
+    th { background: #f1f5ff; font-weight: 600; }
+    tr:nth-child(even) td { background: #fafbff; }
+
+    .pill {
+      display: inline-block;
+      border-radius: 20px;
+      padding: 2px 9px;
+      font-size: 0.78rem;
+      font-weight: 600;
+      margin: 0 2px;
+    }
+    .pill.blue { background: #dbeafe; color: #1e3a8a; }
+    .pill.green { background: #dcfce7; color: #14532d; }
+    .pill.orange { background: #ffedd5; color: #7c2d12; }
+    .pill.purple { background: #ede9fe; color: #4c1d95; }
+    .pill.teal { background: #ccfbf1; color: #134e4a; }
+
+    .note {
+      background: #f7f9fc;
+      border-left: 4px solid #93c5fd;
+      border-radius: 0 8px 8px 0;
+      padding: 10px 12px;
+      color: var(--muted);
+      margin-top: 10px;
+      font-size: 0.91rem;
+    }
+
+    .code-box {
+      border: 1px solid var(--line);
+      border-radius: 11px;
+      overflow: hidden;
+      margin-top: 12px;
+    }
+    .code-title {
+      background: #f1f5ff;
+      border-bottom: 1px solid var(--line);
+      color: #1f3e8a;
+      font-weight: 600;
+      font-size: 0.83rem;
+      padding: 6px 12px;
+    }
+    pre {
+      margin: 0;
+      padding: 13px;
+      font-size: 0.84rem;
+      line-height: 1.5;
+      background: #fff;
+      white-space: pre-wrap;
+      word-break: break-word;
+      overflow-wrap: anywhere;
+      font-family: Consolas, "Courier New", monospace;
+    }
+
+    @media print {
+      @page { margin: 12mm; }
+      body { background: #fff; font-size: 0.88rem; line-height: 1.45; }
+      .container { max-width: 100%; margin: 0; padding: 0 0 8px; }
+      .hero {
+        background: linear-gradient(135deg, #1d4ed8 0%, #3b82f6 60%, #60a5fa 100%) !important;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+        padding: 16px 18px 14px;
+        border-radius: 10px;
+      }
+      .hero h1 { font-size: 1.35rem; color: #fff !important; }
+      .hero p, .badge { color: #fff !important; }
+      .panel { margin-top: 8px; padding: 12px 14px; border-radius: 8px; }
+      h2 { font-size: 1.0rem; }
+      h3 { font-size: 0.92rem; }
+      .stats-grid, .diagram { gap: 6px; }
+      .diagram { grid-template-columns: 1fr 1fr; }
+      table { font-size: 0.82rem; }
+      th, td { padding: 5px 7px; }
+      .stat-card, .flow li, .code-box { break-inside: avoid; page-break-inside: avoid; }
+    }
+  </style>
+</head>
+<body>
+<main class="container">
+
+  <section class="hero">
+    <h1>AI Art Critic - Conversational RAG &amp; LLM Integration</h1>
+    <p>
+      This document explains how I added the conversational part of the AI Art Critic app.
+      The goal was to let users talk about the artwork they uploaded, with an AI "critic" that can help users with questions they have about the work, while sounding like a meseum guide/art expert.
+    </p>
+    <p>
+      This belongs to model interaction and adaptation because I integrated the trained model with an LLM.
+    </p>
+    <div>
+      <span class="badge">LLM enrichment</span>
+      <span class="badge">Conversational RAG</span>
+      <span class="badge">1,577 museum records</span>
+    </div>
+  </section>
+
+  <p class="section-label">Overview</p>
+
+  <section class="panel">
+    <h2>1. What I Added</h2>
+    <p>
+      The app already had a local model that predicts style and artist. I added a second layer around it:
+      an LLM-based critic that can explain the result, answer follow-up questions, and use retrieved museum records as extra context of how it needs to talk.
+    </p>
+    <div class="stats-grid">
+      <div class="stat-card blue">
+        <div class="num">Test 13</div>
+        <div class="label">Local style + artist model used by the backend</div>
+      </div>
+      <div class="stat-card green">
+        <div class="num">1,577</div>
+        <div class="label">Validated open-access museum records in the local RAG corpus</div>
+      </div>
+      <div class="stat-card purple">
+        <div class="num">2</div>
+        <div class="label">Museum APIs used: The Met and Cleveland Museum of Art</div>
+      </div>
+      <div class="stat-card teal">
+        <div class="num">0</div>
+        <div class="label">Image files downloaded; only metadata and image URLs are stored</div>
+      </div>
+    </div>
+  </section>
+
+  <section class="panel">
+    <h2>2. Final App Flow</h2>
+    <p>
+      The final solution is not just one model. It is a small AI system where each part has a clear job.
+    </p>
+    <div class="diagram">
+      <div class="box"><strong>Upload</strong>User uploads artwork image</div>
+      <div class="box"><strong>Analyze</strong>Test 13 predicts style and artist</div>
+      <div class="box"><strong>Enrich</strong>LLM adds title, mood, context, and visible observations (takes over previous step if confidence is low)</div>
+      <div class="box"><strong>Retrieve</strong>RAG finds useful local museum records</div>
+      <div class="box"><strong>Chat</strong>User talks with the art critic</div>
+    </div>
+    <div class="note">
+      The local museum records are used as reference material. They are not treated as the uploaded artwork itself.
+      The LLM can still use its general art-history knowledge, but the retrieved records give it concrete museum examples.
+    </div>
+  </section>
+
+  <p class="section-label">Structured Development</p>
+
+  <section class="panel">
+    <h2>3. Development Steps</h2>
+    <ol class="flow">
+      <li>I first integrated the final Test 13 model into the Flask backend, so the app could return style, artist and confidence scores.</li>
+      <li>I added LLM enrichment after the local model. This gives the UI extra fields like time period, emotional tone, display title, and visual observations. It also takes over style and artist predictions if the local model is uncertain.</li>
+      <li>I added a chat endpoint so the user could ask follow-up questions about mood, brushwork, composition, symbolism, context or any other aspect.</li>
+      <li>I improved the chat with RAG, so answers are not only generic LLM text but can get information from real museum records I chose.</li>
+      <li>I replaced my first AI generated local corpus (this is a collection of information used by the AI) with real open-access museum data, because that is safer and more professional for a public app.</li>
+      <li>I tested the conversation behavior and adjusted the prompt so retrieved museum records can be used as comparisons.</li>
+    </ol>
+  </section>
+
+  <section class="panel">
+    <h2>4. Main Components</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>Component</th>
+          <th>File / endpoint</th>
+          <th>Purpose</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><span class="pill blue">Local model</span></td>
+          <td>models/wikiart_test13_style_artist_warmstart_best.pt</td>
+          <td>Predicts the style and artist from the uploaded artwork.</td>
+        </tr>
+        <tr>
+  <td><span class="pill green">AI decision pipeline</span></td>
+  <td>backend/open_world_artist.py</td>
+  <td>Combines the local AI prediction, image matching, confidence checking, and optional LLM improvements to create the final result.</td>
+</tr>
+        </tr>
+        <tr>
+          <td><span class="pill purple">Conversation service</span></td>
+          <td>backend/conversation.py</td>
+         <td>Creates the artwork information, finds useful context, remembers recent messages, and generates the AI response.</td>
+        </tr>
+        <tr>
+          <td><span class="pill teal">Museum corpus</span></td>
+          <td>data/art_sources.jsonl</td>
+          <td>Local collection of publicly available museum information used by the AI for extra context. Only the most relevant records are sent to the LLM.</td>
+        </tr>
+        <tr>
+          <td><span class="pill orange">Frontend chat</span></td>
+          <td>frontend/src/components/ArtworkChat</td>
+          <td>Lets the user ask questions and shows the answer with a typewriter-style animation.</td>
+        </tr>
+      </tbody>
+    </table>
+  </section>
+
+  <p class="section-label">RAG and LLM Behavior</p>
+
+  <section class="panel">
+    <h2>5. How the RAG Works</h2>
+    <p>
+      The app does not send the full museum dataset to the LLM. Instead, it searches locally and only sends a few relevant snippets.
+      This keeps the prompt smaller and makes the answer more focused.
+    </p>
+    <ol class="flow">
+      <li>The user's message is combined with the artwork profile, such as predicted style, mood, and visual observations.</li>
+      <li>The local retriever searches things like style notes, technique notes, ArtEmis emotional examples, and museum records.</li>
+      <li>The best results are chosen so one source does not destroy the original prompt.</li>
+      <li>The LLM receives the artwork profile plus selected content from the retriever and writes the answer.</li>
+    </ol>
+    <div class="code-box">
+      <div class="code-title">Example of the kind of context sent to the LLM</div>
+      <pre>{
+  "artwork_profile": {
+    "style": "Impressionism",
+    "artist": "Unknown Artist",
+    "visual_observations": {
+      "palette": "soft greens and blues",
+      "composition": "quiet landscape with open sky"
+    }
+  },
+  "retrieved_notes": [
+    {
+      "title": "A Winter Sky",
+      "source": "Cleveland Museum of Art",
+      "type": "museum-record"
+    },
+    {
+      "title": "Movement: Impressionism",
+      "source": "curated-style",
+      "type": "style"
+    }
+  ]
+}</pre>
+    </div>
+  </section>
+
+  <section class="panel">
+    <h2>6. Low-Confidence LLM Handoff</h2>
+    <p>
+      The local model stays in control when it is confident. If confidence is low, the app can ask the LLM to help with the final artist or style.
+      This is useful because the local model is trained on a speific dataset, which means if an uploaded artwork has a style or artist that is not present in the dataset, the local model will be uncertain and ofter wrong. The LLM has much more knowledge and because of that is often better in those specific cases.
+    </p>
+    <div class="code-box">
+      <div class="code-title">Short snippet from backend/open_world_artist.py</div>
+      <pre>needs_artist_fallback = not high_confidence
+
+if use_llm and (needs_artist_fallback or style_low_confidence or enrich_analysis):
+    llm_result = refine_with_llm(
+        candidates=candidates,
+        retrieval_hits=retrieval_hits,
+        style_hint=style_hint,
+        model_confidence={
+            "top1": top1_prob,
+            "top2": top2_prob,
+            "margin": prob_margin,
+            "style_top1": style_top1_prob,
+        },
+        image=pil_image if llm_with_image else None,
+    )
+
+    if needs_artist_fallback:
+        if llm_result.get("is_unknown"):
+            final_artist = "unknown"
+        else:
+            final_artist = llm_result.get("artist", final_artist)
+
+    if style_low_confidence and llm_result.get("style"):
+        final_style = llm_result.get("style", final_style)</pre>
+    </div>
+    <div class="note">
+      This does not mean the LLM always overrides the model. It only happens when the confidence checks say the local model is uncertain,
+      or when extra enrichment fields are needed for the user interface.
+    </div>
+  </section>
+
+  <section class="panel">
+    <h2>7. Prompt and Behavior Rules</h2>
+    <p>
+      The prompt was changed several times because the first version was too generic. The final version tries to make the critic helpful,
+      but also careful. It tells the LLM to:
+    </p>
+    <ul>
+      <li>stay grounded in visible evidence, like color, composition, brushwork, light, focal points, and mood (all important inside artworks)</li>
+      <li>avoid overclaiming the artist, intent, symbolism, or exact history (since that could make the response less reliable)</li>
+      <li>treat ArtEmis examples as emotional contexts (since these were written by actual critics), not factual evidence about the uploaded artwork;</li>
+      <li>use retrieved museum records as context or comparisons, not as proof that the uploaded artwork is that exact work;</li>
+      <li>separate local museum references from broader art-history knowledge the LLM has</li>
+    </ul>
+  </section>
+
+  <p class="section-label">Validation</p>
+
+  <section class="panel">
+    <h2>8. Tests and Checks</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>Test</th>
+          <th>What I checked</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Backend compile</td>
+          <td>Ran Python compile checks on backend and ingestion scripts.</td>
+        </tr>
+        <tr>
+          <td>Frontend build</td>
+          <td>Ran lint and production build for the React frontend.</td>
+        </tr>
+        <tr>
+          <td>RAG retrieval smoke test</td>
+          <td>Asked a museum-context question and checked if museum-record references appeared or if it was ignored.</td>
+        </tr>
+        <tr>
+          <td>Fallback behavior</td>
+          <td>Checked behavior when no OpenAI key is available, which then just used the local model.</td>
+        </tr>
+        <tr>
+          <td>Prompt behavior</td>
+          <td>Checked that museum records are presented as comparisons, not as the uploaded image itself.</td>
+        </tr>
+      </tbody>
+    </table>
+  </section>
+
+  <p class="section-label">Security, Privacy, Ethics, Compliance</p>
+
+  <section class="panel">
+    <h2>9. Security and Privacy</h2>
+    <ul>
+      <li>The OpenAI API key is loaded from environment variables and is not stored in frontend code.</li>
+      <li>The uploaded image is processed by the backend for analysis, but the app does not add permanent user image storage.</li>
+      <li>Chat sessions are short-lived in backend memory and are pruned after a time limit.</li>
+      <li>The frontend sends an `artwork_id` for chat instead of resending the full analysis each time.</li>
+    </ul>
+  </section>
+
+  <section class="panel">
+    <h2>10. Ethics and Compliance</h2>
+    <p>
+      The app needs to be careful because the AI critic could make claims about artworks that are not completly true.
+      I added uncertainty handling so the critic can say that a style or artist is only a possibility when confidence is low.
+    </p>
+    <table>
+      <thead>
+        <tr>
+          <th>Risk</th>
+          <th>Mitigation</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>False artist attribution</td>
+          <td>The prompt tells the LLM to avoid strong artist claims when confidence is low.</td>
+        </tr>
+        <tr>
+          <td>Hallucinated museum evidence</td>
+          <td>Retrieved records are included as references, and the prompt says not to treat them as the uploaded artwork.</td>
+        </tr>
+        <tr>
+          <td>Copyright or license problems</td>
+         <td>The scripts only use museum records that are free to use, and they do not download any copyrighted data</td>
+        </tr>
+        <tr>
+          <td>Overly confident interpretation</td>
+          <td>The critic is instructed to connect claims to visible evidence and use careful language to not make it sound like facts.</td>
+        </tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section class="panel">
+    <h2>11. Open-Access Sources Used</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>Source</th>
+          <th>API / policy</th>
+          <th>Filter used</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>The Metropolitan Museum of Art</td>
+          <td>https://metmuseum.github.io/<br />https://www.metmuseum.org/about-the-met/policies-and-documents/open-access</td>
+          <td>Only records with `isPublicDomain == true` are kept.</td>
+        </tr>
+        <tr>
+          <td>Cleveland Museum of Art</td>
+          <td>https://openaccess-api.clevelandart.org/</td>
+          <td>Only records with `share_license_status == "CC0"` are kept.</td>
+        </tr>
+      </tbody>
+    </table>
+  </section>
+
+  <section class="panel">
+    <h2>12. Conclusion</h2>
+    <p>
+      The final result is an AI art critic that combines a trained local model with an LLM users can chat with.
+      The local model gives predictions, the sometimes takes over and explains them, and RAG gives the chat concrete museum examples to work with.
+    </p>
+    <p>
+      I also adapted the system during development, I first used a generated local corpus (gnerated with AI), then replaced it with real open-access museum records to make the solution more accurate.
+    </p>
+    <p>
+      This shows a structured development process: build a working version, test the behavior, identify risks and make improvements to finally have a nice working app.
+    </p>
+  </section>
+
+</main>
+</body>
+</html>

@@ -461,6 +461,7 @@ def refine_with_llm(
         "and brief visual context from the artwork. Keep reasoning short and grounded in visible evidence. "
         "The emotional tone should be a concise display phrase, such as 'quiet and contemplative' "
         "or 'tense, somber, and dramatic', inferred from color, light, composition, figures, and texture. "
+        "Visual observations should be concrete things visible in the image, not historical claims. "
         "Do not overclaim exact artist, intent, symbolism, or historical context."
     )
 
@@ -472,10 +473,12 @@ def refine_with_llm(
     user_prompt = "\n".join(user_lines) if user_lines else "No candidate hints provided."
     user_prompt += (
         "\n\nReturn a JSON object with keys: artist, reason, is_unknown, confidence, "
-        "style, style_confidence, time_period, emotional_tone, title, context. "
+        "style, style_confidence, time_period, emotional_tone, title, context, visual_observations. "
         "Use style_confidence and confidence as numbers from 0 to 1. "
         "Set emotional_tone to 2-6 words and avoid returning an empty string. "
-        "The title should be a concise suggested title, not a factual artwork title unless known."
+        "The title should be a concise suggested title, not a factual artwork title unless known. "
+        "visual_observations must be an object with short strings for palette, composition, lighting, "
+        "subject_matter, brushwork_texture, and focal_points."
     )
     if model_confidence:
         user_prompt += (
@@ -542,7 +545,30 @@ def refine_with_llm(
         "emotional_tone": str(result.get("emotional_tone") or ""),
         "title": str(result.get("title") or ""),
         "context": str(result.get("context") or ""),
+        "visual_observations": _clean_visual_observations(result.get("visual_observations")),
     }
+
+
+def _clean_visual_observations(value: Any) -> Dict[str, str]:
+    if not isinstance(value, dict):
+        return {}
+    allowed = {
+        "palette",
+        "composition",
+        "lighting",
+        "subject_matter",
+        "brushwork_texture",
+        "focal_points",
+    }
+    cleaned: Dict[str, str] = {}
+    for key in allowed:
+        raw = value.get(key)
+        if isinstance(raw, list):
+            raw = ", ".join(str(item) for item in raw[:4])
+        text = " ".join(str(raw or "").split())
+        if text:
+            cleaned[key] = text[:220]
+    return cleaned
 
 
 def _style_from_rel_path(rel_path: str) -> str:

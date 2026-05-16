@@ -1,7 +1,10 @@
 """Lumora API serving the Test 13 multitask style+artist model."""
 
 import os
+import time
+import uuid
 from pathlib import Path
+from typing import Any, Dict, Optional
 from flask import Flask, jsonify, request
 from flask_cors import CORS
 from PIL import Image
@@ -40,6 +43,54 @@ open_world_pipeline = OpenWorldArtistPipeline(
     index_batch_size=OPEN_WORLD_INDEX_BATCH,
 )
 conversation_service = ArtConversationService()
+
+
+class ArtworkAnalysisStore:
+    """In-memory owner for artwork analysis used by chat grounding."""
+
+    def __init__(self, ttl_seconds: int = 60 * 60 * 4, max_items: int = 120):
+        self.ttl_seconds = ttl_seconds
+        self.max_items = max_items
+        self._items: Dict[str, Dict[str, Any]] = {}
+
+    def add(self, analysis: Dict[str, Any]) -> str:
+        self._prune()
+        artwork_id = str(uuid.uuid4())
+        self._items[artwork_id] = {
+            "analysis": analysis,
+            "created_at": time.time(),
+            "updated_at": time.time(),
+        }
+        self._trim()
+        return artwork_id
+
+    def get(self, artwork_id: Optional[str]) -> Optional[Dict[str, Any]]:
+        self._prune()
+        if not artwork_id:
+            return None
+        item = self._items.get(artwork_id)
+        if not item:
+            return None
+        item["updated_at"] = time.time()
+        return item["analysis"]
+
+    def _prune(self) -> None:
+        now = time.time()
+        expired = [
+            artwork_id for artwork_id, item in self._items.items()
+            if now - item.get("updated_at", 0) > self.ttl_seconds
+        ]
+        for artwork_id in expired:
+            self._items.pop(artwork_id, None)
+
+    def _trim(self) -> None:
+        if len(self._items) <= self.max_items:
+            return
+        ranked = sorted(self._items.items(), key=lambda item: item[1].get("updated_at", 0), reverse=True)
+        self._items = dict(ranked[: self.max_items])
+
+
+artwork_store = ArtworkAnalysisStore()
 
 
 @app.get("/api/health")
@@ -119,7 +170,7 @@ def predict_artist_open_world():
         "confidence": round(float(artist_conf) * 100, 1),
     }
 
-    return jsonify({
+    analysis_payload = {
         "style": style,
         "artist": artist,
         "top5": style_topk,
@@ -138,6 +189,13 @@ def predict_artist_open_world():
         "emotional_tone": (result.get("llm") or {}).get("emotional_tone"),
         "title": (result.get("llm") or {}).get("title"),
         "context": (result.get("llm") or {}).get("context"),
+        "visual_observations": (result.get("llm") or {}).get("visual_observations") or {},
+    }
+    artwork_id = artwork_store.add(analysis_payload)
+
+    return jsonify({
+        **analysis_payload,
+        "artwork_id": artwork_id,
     })
 
 
@@ -145,7 +203,12 @@ def predict_artist_open_world():
 def chat_about_artwork():
     payload = request.get_json(silent=True) or {}
     message = str(payload.get("message") or "").strip()
-    analysis = payload.get("analysis") or {}
+    artwork_id = payload.get("artwork_id")
+    analysis = artwork_store.get(artwork_id if isinstance(artwork_id, str) else None)
+    if isinstance(artwork_id, str) and analysis is None:
+        return jsonify({"error": "Unknown artwork_id. Analyze the image again before chatting."}), 404
+    if analysis is None:
+        analysis = payload.get("analysis") or {}
     session_id = payload.get("session_id")
 
     if not message:
@@ -165,7 +228,6 @@ def chat_about_artwork():
         return jsonify({"error": f"Chat failed: {exc}"}), 500
 
     return jsonify(result)
-
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 5000))

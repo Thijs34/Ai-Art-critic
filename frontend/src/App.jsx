@@ -25,6 +25,7 @@ async function analyzeImage(file) {
   const data = await res.json()
 
   return {
+    artworkId: data.artwork_id ?? null,
     style: data.style,
     artist: data.artist,
     top5: data.top5,
@@ -42,6 +43,7 @@ async function analyzeImage(file) {
     emotionalTone: data.emotional_tone ?? null,
     artworkTitle: data.title ?? null,
     context: data.context ?? null,
+    visualObservations: data.visual_observations ?? {},
   }
 }
 

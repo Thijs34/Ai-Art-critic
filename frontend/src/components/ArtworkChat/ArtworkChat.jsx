@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import './ArtworkChat.css'
 
 const API_URL = import.meta.env.VITE_API_URL ?? 'http://localhost:5000'
@@ -84,27 +84,6 @@ function renderFormattedMessage(content) {
   })
 }
 
-function toChatAnalysis(analysis) {
-  return {
-    style: analysis.style,
-    artist: analysis.artist,
-    top5: analysis.top5,
-    style_topk: analysis.styleTopk,
-    artist_topk: analysis.artistTopk,
-    final_artist: analysis.finalArtist,
-    candidates: analysis.candidates,
-    retrieval_hits: analysis.retrievalHits,
-    llm: analysis.llm,
-    confidence: analysis.confidence,
-    used_open_world_llm: analysis.usedOpenWorldLlm,
-    used_openai_style: analysis.usedOpenAiStyle,
-    timePeriod: analysis.timePeriod,
-    emotional_tone: analysis.emotionalTone,
-    title: analysis.artworkTitle,
-    context: analysis.context,
-  }
-}
-
 export default function ArtworkChat({ analysis }) {
   const [messages, setMessages] = useState([
     {
@@ -121,7 +100,6 @@ export default function ArtworkChat({ analysis }) {
   const [error, setError] = useState(null)
   const inputRef = useRef(null)
   const messagesRef = useRef(null)
-  const chatAnalysis = useMemo(() => toChatAnalysis(analysis), [analysis])
 
   useEffect(() => {
     const streamingMessage = messages.find((message) => (
@@ -221,7 +199,7 @@ export default function ArtworkChat({ analysis }) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           message,
-          analysis: chatAnalysis,
+          artwork_id: analysis.artworkId,
           session_id: sessionId,
         }),
       })
@@ -251,12 +229,13 @@ export default function ArtworkChat({ analysis }) {
       setMessages((prev) => prev.map((chatMessage) => {
         if (chatMessage.id !== assistantMessageId) return chatMessage
 
+        const fallback = 'I could not reach the critic voice right now, but the analysis above is still available.'
         return {
           ...chatMessage,
-          content: 'I could not reach the critic voice right now, but the analysis above is still available.',
-          visibleContent: '',
+          content: fallback,
+          visibleContent: fallback,
           isPending: false,
-          isStreaming: true,
+          isStreaming: false,
         }
       }))
     } finally {

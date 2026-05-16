@@ -303,7 +303,7 @@
   <section class="hero">
     <h1>AI Art Critic - Data Preparation</h1>
     <p>
-      This document shows how I sourced, cleaned, and prepared the data for the AI Art Critic model.
+      This document shows how I got, cleaned, and prepared the data for the AI Art Critic model.
       The focus is on <strong>data &amp; knowledge stewardship</strong>: taking responsibility for the quality of the data
       from start to finish, not just downloading it and hoping for the best.
     </p>
@@ -313,10 +313,11 @@
       <strong>emotion</strong> labels to see if training on multiple things at once helps.
     </p>
     <div>
-      <span class="badge">3 datasets</span>
-      <span class="badge">12 experiment notebooks</span>
+      <span class="badge">4 data sources</span>
+      <span class="badge">13 experiment notebooks</span>
       <span class="badge">27 art styles</span>
       <span class="badge">~81k WikiArt images</span>
+      <span class="badge">1,577 museum RAG records</span>
       <span class="badge">Multitask learning</span>
     </div>
   </section>
@@ -326,7 +327,7 @@
 
   <section class="panel">
     <h2>1. Workstream Overview</h2>
-    <p>I used three different datasets across this project. None of them were ready to use straight away, so each one needed its own prep work before anything could go into training.</p>
+    <p>I used several data sources across this project. None of them were ready to use straight away, so each one needed its own prep work before anything could go into training or retrieval.</p>
     <table>
       <thead>
         <tr>
@@ -338,12 +339,12 @@
       <tbody>
         <tr>
           <td><span class="pill blue">ArtBench</span><br/>Local image build</td>
-          <td>Checked the metadata CSV had the right columns, downloaded 60k images with retry logic, and sorted them into style folders on disk.</td>
+          <td>Checked if the CSV had the right columns, downloaded 60k images with retry logic, and sorted them into style folders on my pc.</td>
           <td>Local image folders, full CSV with local paths, simple training CSV, failure CSV (61 images).</td>
         </tr>
         <tr>
           <td><span class="pill green">ArtEmis</span><br/>Path linking</td>
-          <td>Scanned 81k WikiArt files on disk, built a lookup from filename to path, matched each ArtEmis painting name to its actual file, and dropped anything that couldn't be found.</td>
+          <td>Scanned 81k WikiArt files and matched each ArtEmis painting name to its actual file, and dropped anything that couldn't be found.</td>
           <td>Enriched CSV with two new columns: <code>painting_path</code> and <code>anchor_painting_path</code>. 233,475 valid rows.</td>
         </tr>
         <tr>
@@ -365,6 +366,11 @@
           <td><span class="pill green">Val/Test split (tests 11–12)</span><br/>Stratified holdout</td>
           <td>Split the existing WikiArt validation set 50/50 into a validation set and a separate held-out test set using stratified sampling, so final numbers are reported on data the model never saw during hyper-parameter tuning.</td>
           <td>Three DataLoaders per run: <code>train_loader</code>, <code>val_loader</code> (used for early stopping), <code>test_loader</code> (final evaluation only).</td>
+        </tr>
+        <tr>
+          <td><span class="pill orange">Museum RAG corpus</span><br/>Open-access metadata</td>
+          <td>Fetched public/open-access artwork data from The Met and Cleveland Museum of Art APIs. Only records marked public domain, open access, or CC0 were kept.</td>
+          <td><code>data/art_sources.jsonl</code> with 1,577 validated records for the conversational RAG layer the AI uses.</td>
         </tr>
       </tbody>
     </table>
@@ -432,7 +438,10 @@
         <canvas id="chartDatasetSizes" height="220"></canvas>
       </div>
       <div class="chart-wrap">
-        <div class="chart-title">ArtBench download quality</div>
+        <div class="chart-title">ArtBench download issue summary</div>
+        <p style="margin:0 0 8px;font-size:0.86rem;color:#4b5563;">
+          Only <strong>61 of 60,000 images failed</strong> after retrying, which is about <strong>0.1%</strong>.
+        </p>
         <canvas id="chartArtbenchDownload" height="220"></canvas>
       </div>
     </div>
@@ -451,7 +460,7 @@
     <ol class="flow">
       <li>First I opened the metadata CSV and checked that the three columns I needed (<code>name</code>, <code>url</code>, <code>label</code>) were actually there. If any were missing the script would immediately throw an error rather than silently doing the wrong thing.</li>
       <li>Cleaned up folder and file names so Windows wouldn't reject them because of special characters.</li>
-      <li>Downloaded everything using 16 parallel threads at once. Each file got up to 3 attempts in case the connection dropped, and files that were already on disk got skipped so I could safely rerun the script.</li>
+      <li>Downloaded everything using at once. Each file got up to 3 attempts in case the connection dropped, and files that were already on my pc got skipped so I could safely rerun the script.</li>
       <li>Saved three output files at the end: one with all the info, one in a simplified format that matches the WikiArt CSV layout, and one just for the 61 downloads that failed so I could see what went wrong.</li>
     </ol>
 
@@ -500,9 +509,9 @@ if len(failures) > 0:
     <h2>4. ArtEmis: Linking Emotion Labels to WikiArt Images</h2>
     <p>
       ArtEmis is a dataset where people wrote about their emotional reactions to paintings. Each row has a painting name,
-      an anchor painting to compare it to, and an emotion label. The catch is that ArtEmis only stores the painting names
+      a painting to compare it to, and an emotion label. The catch is that ArtEmis only stores the painting names
       as plain text, not actual file paths. So before I could use it, I needed to figure out where each painting actually
-      lives on disk.
+      lives on my pc.
     </p>
 
     <ol class="flow">
@@ -556,7 +565,7 @@ df.to_csv(output_csv, index=False)</code></pre>
     <h2>5. WikiArt: Preparation in the Experiment Notebooks</h2>
     <p>
       WikiArt is the main dataset I kept coming back to across all 12 tests. The core prep steps were the same every time,
-      but each notebook tweaked or extended them — mainly the augmentation and how thoroughly bad images were caught.
+      but each notebook tweaked or extended them, mainly the augmentation and how thoroughly bad images were caught.
     </p>
 
     <h3>Base preparation steps (used in every test)</h3>
@@ -564,8 +573,7 @@ df.to_csv(output_csv, index=False)</code></pre>
       <li>The script auto-finds the right CSV files by searching for keywords like <code>"train"</code> and <code>"style"</code> in filenames, so I didn't have to hardcode any paths.</li>
       <li>Built a dictionary that maps each label number back to its style name by reading the folder structure (e.g. folder <code>impressionism/</code> = label <code>4</code>). This got printed out before every run so I could verify it was right.</li>
       <li>Every image path got checked with <code>Path.exists()</code>. Rows pointing to files that no longer existed were dropped. From test 3 onwards I also tried actually opening each image to catch files that exist but are broken inside. Only 2 training rows turned out to have problems.</li>
-      <li>Images got resized and normalised using ImageNet mean and std values, which work well for pretrained models. Training images also got augmented, and those augmentations got more aggressive with each test.</li>
-      <li>Set <code>num_workers=0</code> specifically for Windows because PyTorch's multiprocessing in the dataloader causes crashes there.</li>
+      <li>Images got resized and normalised using ImageNet mean and std values, which work well for pretrained models.</li>
     </ol>
 
     <div class="code-box">
@@ -624,67 +632,67 @@ train_transform = transforms.Compose([
         </tr>
       </thead>
       <tbody>
-        <tr>
-          <td><span class="pill blue">Test 1</span></td>
-          <td>ResNet18</td>
-          <td>HorizontalFlip + Rotation(±10°) + ColorJitter</td>
-        </tr>
-        <tr>
-          <td><span class="pill blue">Test 2</span></td>
-          <td>ResNet18</td>
-          <td>HorizontalFlip only (simpler baseline)</td>
-        </tr>
-        <tr>
-          <td><span class="pill blue">Test 3</span></td>
-          <td>ResNet50</td>
-          <td>RandomResizedCrop added, stronger ColorJitter</td>
-        </tr>
-        <tr>
-          <td><span class="pill blue">Test 4</span></td>
-          <td>ConvNeXt-Tiny</td>
-          <td>RandAugment + RandomErasing + MixUp/CutMix, class-weighted loss</td>
-        </tr>
-        <tr>
-          <td><span class="pill blue">Test 5</span></td>
-          <td>ViT-B/16-384</td>
-          <td>Vision Transformer backbone, same augmentation as test 4</td>
-        </tr>
-        <tr>
-          <td><span class="pill blue">Test 6</span></td>
-          <td>ConvNeXt-Tiny</td>
-          <td>Gradient accumulation (effective batch 48), more epochs</td>
-        </tr>
-        <tr>
-          <td><span class="pill blue">Test 7</span></td>
-          <td>ViT-B/16-384</td>
-          <td>RandAugment magnitude raised to 11, effective batch 60</td>
-        </tr>
-        <tr>
-          <td><span class="pill blue">Test 8</span></td>
-          <td>ViT-B/16-384</td>
-          <td>Effective batch raised to 72 (smaller per-batch, more accumulation)</td>
-        </tr>
-        <tr>
-          <td><span class="pill purple">Test 9</span></td>
-          <td>ViT-B/16-384</td>
-          <td>Multitask: added artist + emotion heads, ArtEmis emotion data merged in</td>
-        </tr>
-        <tr>
-          <td><span class="pill purple">Test 10</span></td>
-          <td>ViT-B/16-384</td>
-          <td>Style+artist only (emotion dropped); artist labels now from dedicated <code>artist_train/val.csv</code> instead of file paths; uncertainty weighting between tasks</td>
-        </tr>
-        <tr>
-          <td><span class="pill green">Test 11</span></td>
-          <td>DINOv2 ViT-B/14 (336px)</td>
-          <td>New backbone (DINOv2, 336px input); validation set split 50/50 into val + held-out test set using stratified sampling; same RandAugment pipeline</td>
-        </tr>
-        <tr>
-          <td><span class="pill green">Test 12</span></td>
-          <td>DINOv2 ViT-B/14 (448px)</td>
-          <td>Resolution raised to 448px (1024 patches); warm-started from test 11 checkpoint; same val/test split and augmentation pipeline as test 11</td>
-        </tr>
-      </tbody>
+  <tr>
+    <td><span class="pill blue">Test 1</span></td>
+    <td>ResNet18</td>
+    <td>Images were randomly flipped, slightly rotated, and colors were slightly changed during training.</td>
+  </tr>
+  <tr>
+    <td><span class="pill blue">Test 2</span></td>
+    <td>ResNet18</td>
+    <td>Only random image flipping was used during training.</td>
+  </tr>
+  <tr>
+    <td><span class="pill blue">Test 3</span></td>
+    <td>ResNet50</td>
+    <td>Added random zoom/cropping and stronger color changes.</td>
+  </tr>
+  <tr>
+    <td><span class="pill blue">Test 4</span></td>
+    <td>ConvNeXt-Tiny</td>
+    <td>Used stronger random image edits, random area removal, image mixing techniques, and balancing for underrepresented classes.</td>
+  </tr>
+  <tr>
+    <td><span class="pill blue">Test 5</span></td>
+    <td>ViT-B/16-384</td>
+    <td>Switched to a Vision Transformer model while keeping the same training augmentations as test 4.</td>
+  </tr>
+  <tr>
+    <td><span class="pill blue">Test 6</span></td>
+    <td>ConvNeXt-Tiny</td>
+    <td>Simulated larger training batches. It changed the weight every 4 steps instead of every step. WHich was a bit lighter on my gpu</td>
+  </tr>
+  <tr>
+    <td><span class="pill blue">Test 7</span></td>
+    <td>ViT-B/16-384</td>
+    <td>Used stronger random image augmentation and larger effective batch sizes.</td>
+  </tr>
+  <tr>
+    <td><span class="pill blue">Test 8</span></td>
+    <td>ViT-B/16-384</td>
+    <td>Further increased the effective batch size using more gradient accumulation.</td>
+  </tr>
+  <tr>
+    <td><span class="pill purple">Test 9</span></td>
+    <td>ViT-B/16-384</td>
+    <td>Added extra prediction outputs for artist and emotion recognition using ArtEmis emotion data.</td>
+  </tr>
+  <tr>
+    <td><span class="pill purple">Test 10</span></td>
+    <td>ViT-B/16-384</td>
+    <td>Removed emotion prediction and improved artist label handling and task balancing.</td>
+  </tr>
+  <tr>
+    <td><span class="pill green">Test 11</span></td>
+    <td>DINOv2 ViT-B/14 (336px)</td>
+    <td>Switched to a newer DINOv2 model and created a separate held-out test set for evaluation.</td>
+  </tr>
+  <tr>
+    <td><span class="pill green">Test 12</span></td>
+    <td>DINOv2 ViT-B/14 (448px)</td>
+    <td>Increased image resolution from 336px to 448px and continued training from the previous model.</td>
+  </tr>
+</tbody>
     </table>
   </section>
 
@@ -838,27 +846,116 @@ else:
       <li><code>label_to_style</code> dictionary printed and verified before every training run</li>
       <li>From test 9 onwards: a merged dataset that combines WikiArt and ArtEmis, with style, artist, and emotion labels all together per image</li>
     </ul>
+
+    <h3>Museum RAG corpus</h3>
+    <ul>
+      <li><code>data/met_sources.jsonl</code>: validated public-domain records fetched from The Met API</li>
+      <li><code>data/cleveland_sources.jsonl</code>: validated CC0 records fetched from the Cleveland Museum of Art API</li>
+      <li><code>data/art_sources.jsonl</code>: final deduplicated RAG corpus with 1,577 museum metadata records</li>
+    </ul>
   </section>
 
-  <!-- ── SECTION: CONCLUSION ── -->
+  <!-- ── SECTION: MUSEUM RAG DATA ── -->
   <section class="panel">
-    <h2>9. Conclusion</h2>
+    <h2>9. Open-Access Museum Data for RAG</h2>
+    <p>
+      Later in the project I added a conversational RAG layer, so I needed a small local reference library with real museum records.
+      I did not want to use made-up art-critic text for this. Instead, I built a metadata-only corpus from open-access museum APIs.
+    </p>
+
+    <div class="stats-grid">
+      <div class="stat-card blue">
+        <div class="num">1,577</div>
+        <div class="label">Validated records in <code>data/art_sources.jsonl</code></div>
+      </div>
+      <div class="stat-card green">
+        <div class="num">2</div>
+        <div class="label">Museum APIs used: The Met and Cleveland Museum of Art</div>
+      </div>
+      <div class="stat-card orange">
+        <div class="num">0</div>
+        <div class="label">Image files downloaded; only image URLs are stored</div>
+      </div>
+      <div class="stat-card purple">
+        <div class="num">CC0</div>
+        <div class="label">Cleveland records must be marked CC0</div>
+      </div>
+    </div>
+
+    <h3>What the scripts do</h3>
+    <table>
+      <thead>
+        <tr>
+          <th>Script</th>
+          <th>Responsibility</th>
+          <th>Quality / compliance check</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><code>scripts/ingest_met.py</code></td>
+          <td>Fetches records from The Met Collection API.</td>
+          <td>Only keeps records where <code>isPublicDomain == true</code>.</td>
+        </tr>
+        <tr>
+          <td><code>scripts/ingest_cleveland.py</code></td>
+          <td>Fetches records from the Cleveland Museum of Art Open Access API.</td>
+          <td>Only keeps records where <code>share_license_status == "CC0"</code>.</td>
+        </tr>
+        <tr>
+          <td><code>scripts/build_corpus.py</code></td>
+          <td>Merges the source files into the final RAG corpus.</td>
+          <td>Deduplicates IDs, skips weak records, and checks that license text is open-access/public-domain/CC0.</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <h3>Fields preserved for accountability</h3>
+    <p>
+      Every final JSONL record keeps attribution and license fields, including <code>source</code>,
+      <code>source_url</code>, <code>license</code>, <code>title</code>, <code>artist</code>,
+      <code>date</code>, <code>medium</code>, <code>department</code>, <code>tags</code>,
+      <code>image_url</code>, and <code>rag_text</code>.
+    </p>
+
+    <div class="code-box">
+      <div class="code-title">Simplified final JSONL shape</div>
+      <pre><code class="language-json">{
+  "id": "met_435844",
+  "source": "Metropolitan Museum of Art",
+  "source_url": "https://www.metmuseum.org/art/collection/search/435844",
+  "license": "CC0 / public domain / open access",
+  "title": "The Musicians",
+  "artist": "Caravaggio (Michelangelo Merisi)",
+  "date": "1597",
+  "medium": "Oil on canvas",
+  "tags": ["Grapes", "Men", "Music"],
+  "image_url": "https://images.metmuseum.org/...",
+  "rag_text": "Title: ...\nArtist: ...\nDate: ..."
+}</code></pre>
+    </div>
+
+    <div class="note">
+      I deliberately did not scrape websites or download museum image files. For this version the app stores metadata and image URLs only.
+      That keeps the RAG data useful for conversation while staying safer for a public or commercial app.
+    </div>
+  </section>
+
+  <section class="panel">
+    <h2>10. Conclusion</h2>
     <p>
       Looking back at all the prep work, the biggest thing I took away is that data preparation is where a lot of the real work actually happens.
       It's easy to think you can just download a dataset and start training, but in practice there are always files missing,
-      column names that don't match, painting names that are spelled slightly differently depending on the source, images that exist on disk
+      column names that don't match, painting names that are spelled slightly differently depending on the source, images that exist
       but crash when you try to open them, all kinds of small things that add up.
     </p>
     <p>
       Across this project I worked with three separate datasets (WikiArt, ArtBench, ArtEmis) that each had their own issues.
-      ArtBench needed a full download pipeline with retry logic. ArtEmis needed a path-matching step before it could even be used.
+      ArtBench needed a full download logic for the images with retry logic. ArtEmis needed a path-matching step before it could even be used.
       WikiArt was the most straightforward but still needed consistent cleaning and label validation across all 12 experiments.
     </p>
     <p>
-      By test 9 the data pipeline had grown quite a bit: merging two datasets, handling multi-labels,
-      dealing with images that only have some labels available, and keeping all of that consistent across train and validation.
-      Tests 10 through 12 refined things further switching to authoritative artist CSVs, properly splitting the validation set
-      into a val and a held-out test set, and scaling up the input resolution, so the reported numbers are increasingly trustworthy.
+      At the end I introduced a fourth dataset for the RAG layer, which was built from public available data from museum APis. THis was more about making sure I had validated information I could feed to my LLM without having to worry about copyright or letting AI makup details that are possibly wrong.
     </p>
   </section>
 
@@ -910,32 +1007,40 @@ else:
     }
   });
 
-  // ── 2: ArtBench download donut ──
+  // ArtBench failed download summary
   new Chart(document.getElementById("chartArtbenchDownload"), {
-    type: "doughnut",
+    type: "bar",
     data: {
-      labels: ["Downloaded (59,939)", "Failed (61)"],
+      labels: ["Failed downloads"],
       datasets: [{
-        data: [59939, 61],
-        backgroundColor: ["#22c55e", "#f87171"],
-        borderWidth: 2,
-        borderColor: "#fff",
-        hoverOffset: 6
+        label: "61 failed images (0.1%)",
+        data: [61],
+        backgroundColor: ["#f87171"],
+        borderColor: ["#dc2626"],
+        borderWidth: 1.5,
+        borderRadius: 8,
+        maxBarThickness: 80
       }]
     },
     options: {
       responsive: true,
-      cutout: "65%",
+      indexAxis: "y",
       plugins: {
-        legend: {
-          position: "bottom",
-          labels: { padding: 14, boxWidth: 14, boxHeight: 14 }
-        },
+        legend: { display: false },
         tooltip: {
           callbacks: {
-            label: ctx => " " + ctx.label
+            label: ctx => " " + ctx.parsed.x + " of 60,000 images failed (0.1%)"
           }
         }
+      },
+      scales: {
+        x: {
+          min: 0,
+          max: 100,
+          title: { display: true, text: "Failed images after retrying (0-100 zoomed scale)" },
+          grid: { color: "#e5e7eb" }
+        },
+        y: { grid: { display: false } }
       }
     }
   });
@@ -943,3 +1048,4 @@ else:
 </script>
 </body>
 </html>
+

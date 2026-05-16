@@ -311,20 +311,21 @@
   <section class="hero">
     <h1>AI Art Critic - Model Development &amp; Adaptation</h1>
     <p>
-      This document covers how I built, tested, and gradually improved the model across 12 experiments.
-      The focus is on <strong>model interaction &amp; adaptation</strong>: developing and validating an AI solution
-      step by step, making sure each change actually helped before moving on to the next one.
+      This document shows how I built, tested, and slowly improved a model I trained across 13 tests.
+      The focus is on <strong>model interaction &amp; adaptation</strong>: developing and testing an AI solution
+      step by step, making sure each change actually helped before deciding to keep it or make a change.
     </p>
     <p>
-      Each experiment changed one or two things at a time so it stayed clear what made the difference.
+      Each experiment changed one or two things at a time so I had a clear idea if what I did was actually helping or not.
       Security, privacy, ethics, and compliance are also covered at the end.
     </p>
     <div>
-      <span class="badge">12 experiments</span>
+      <span class="badge">13 experiments</span>
       <span class="badge">ResNet → ViT → DINOv2</span>
       <span class="badge">53% to 78.3% accuracy</span>
       <span class="badge">Two-stage fine-tuning</span>
       <span class="badge">Multitask learning</span>
+      <span class="badge">Final style + artist model</span>
     </div>
   </section>
 
@@ -334,16 +335,16 @@
   <section class="panel">
     <h2>1. Development Process</h2>
     <p>
-      Rather than picking the most complex approach straight away, I started simple and worked up from there.
-      The idea was to always have a working baseline so I could tell whether a new change actually helped or made things worse.
+      Rather than picking the most complex approach straight away, I had to get familiar with how the training would work, which is why I started with resnet18
+      The idea was to always have a fast working starting point, so I could start making improvements from there.
     </p>
 
     <ol class="flow">
       <li>Built a simple starting model first, just to have something working that I could measure everything else against.</li>
-      <li>After every run I checked training loss, validation accuracy, and in later tests also top-5 accuracy and a separate test split. Having numbers to compare made decisions easier.</li>
-      <li>Improvements went in a specific order: get the data right first, then try a stronger model, then tune the training settings. Doing it in that order meant I knew what was actually causing improvements.</li>
-      <li>More advanced stuff like MixUp, EMA, gradient accumulation, and multitask learning only came in once the simpler things were working well. Adding complexity too early just makes bugs harder to find.</li>
-      <li>Every run saved checkpoints and a history file. That meant I could go back and compare any two experiments, and also recover results if something crashed.</li>
+      <li>After every run I checked training loss, validation accuracy, and in later tests also top-5 accuracy. Having numbers to compare made decisions easier.</li>
+      <li>Improvements went in a specific order: start simple, then try a stronger model, then tweak some settings to check for improvements. Doing it in that order meant I knew what was actually causing improvements.</li>
+      <li>More advanced stuff like MixUp, EMA, gradient accumulation, and multitask learning only came in once the simpler things were working well. If I would make it complex from the start I would have no idea if it improved anything.</li>
+      <li>Every run saved checkpoints and a history file. That meant I could go back and compare any two experiments, recover it when needed and warm start if I wanted some small tweaks to that model.</li>
     </ol>
   </section>
 
@@ -364,7 +365,7 @@
         <div class="label">Top-5 val accuracy, test 12</div>
       </div>
       <div class="stat-card orange">
-        <div class="num">12</div>
+        <div class="num">13</div>
         <div class="label">Experiments run total</div>
       </div>
       <div class="stat-card purple">
@@ -372,8 +373,8 @@
         <div class="label">Best epoch in test 12 (longest run)</div>
       </div>
       <div class="stat-card teal">
-        <div class="num">3</div>
-        <div class="label">Task heads in test 9 (style + artist + emotion)</div>
+        <div class="num">87.7%</div>
+        <div class="label">Artist val accuracy, test 13</div>
       </div>
     </div>
   </section>
@@ -384,7 +385,7 @@
   <section class="panel">
     <h2>3. What Changed in Each Test</h2>
     <p>
-      Each test built on the previous one. The table below shows which model was used and what the main change was.
+      Each test was a redo of the previous one with small tweaks. The table below shows which model was used and what the main change was.
       Later in this document each technique is explained in more detail.
     </p>
     <table>
@@ -400,82 +401,89 @@
         <tr>
           <td><span class="pill blue">Test 1</span></td>
           <td>ResNet18</td>
-          <td>Starting baseline: pretrained model, basic augmentation, simple train/val loop, saves best checkpoint.</td>
+          <td>Simple starting point. It was a fast low-performing model to get a quick baseline and see how the training process worked.</td>
           <td>53.0%</td>
         </tr>
         <tr>
           <td><span class="pill blue">Test 2</span></td>
           <td>ResNet18</td>
-          <td>Lowered learning rate from 3e-4 to 1e-4, simplified augmentation to isolate the LR effect.</td>
+          <td>Lowered learning rate from 3e-4 to 1e-4. This means updates are more cautious and learning becomes slower but more stable.</td>
           <td>57.8%</td>
         </tr>
         <tr>
           <td><span class="pill blue">Test 3</span></td>
           <td>ResNet50</td>
-          <td>Bigger backbone (ResNet50 vs 18), stronger augmentation including RandomResizedCrop, ran for 10 epochs.</td>
+          <td>Bigger model (ResNet50 vs 18), added stronger augmentation including RandomResizedCrop, ran for 10 epochs.</td>
           <td>63.2%</td>
         </tr>
         <tr>
           <td><span class="pill blue">Test 4</span></td>
           <td>ConvNeXt-Tiny</td>
-          <td>Two-stage training (head first, then full model), label smoothing, EMA model averaging, MixUp/CutMix, class-weighted sampler.</td>
+          <td>Used a more modern model. Training was done in two stages: first the model learned to recognize the WikiArt style classes, then the whole model was fine-tuned for better accuracy.</td>
           <td>66.9%</td>
         </tr>
         <tr>
           <td><span class="pill blue">Test 5</span></td>
           <td>ViT-B/16-384</td>
-          <td>Switched to a Vision Transformer backbone, larger input images (384px), test-time augmentation, same training pipeline as test 4.</td>
+          <td>Used a different and more advanced model with larger images and extra image variations during testing. The rest of the training setup stayed the same as Test 4.</td>
           <td>69.3%</td>
         </tr>
         <tr>
           <td><span class="pill blue">Test 6</span></td>
           <td>ViT-B/16-384</td>
-          <td>Extended fine-tune to 24 epochs, added proper early stopping with patience of 8, gradient accumulation to simulate larger batches.</td>
+          <td>Extended the training to 24 epochs from previous test, added proper early stopping with patience of 8 meaning the training will stop if no improvement is seen for 8 consecutive epochs.</td>
           <td>75.9%</td>
         </tr>
         <tr>
           <td><span class="pill blue">Test 7</span></td>
           <td>ViT-B/16-384</td>
-          <td>Longer training (56 fine-tune epochs), raised MixUp alpha to 0.6, lowered label smoothing to 0.08, more warmup epochs.</td>
-          <td>76.5%</td>
+         <td>Trained the model for longer: 56 fine-tuning epochs. MixUp was increased to 0.6, meaning stronger mixed training examples were used. Label smoothing was lowered to 0.08 so the model focused more strongly on the correct class labels. More warmup epochs were added so learning started more gradually and stably.</td>
+<td>76.5%</td>
         </tr>
         <tr>
           <td><span class="pill blue">Test 8</span></td>
           <td>ViT-B/16-384</td>
-          <td>Longest run yet (72 fine-tune epochs), further tuned MixUp alpha (0.65) and label smoothing (0.07), patience raised to 16.</td>
+         <td>Longest training run so far with 72 fine-tuning epochs. MixUp was increased again to create stronger mixed training examples, while label smoothing was lowered to 0.07 so the model focused more on the correct labels. Patience was raised to 16, meaning training was allowed to continue longer before early stopping.</td>
           <td class="best">76.7%</td>
         </tr>
         <tr>
           <td><span class="pill purple">Test 9</span></td>
           <td>ViT-B/16-384</td>
-          <td>Multitask: three prediction heads (style, artist, emotion), ArtEmis emotion data merged in, learnable loss weighting.</td>
+          <td>Used multitask learning, where the model learned three things at the same time: art style, artist, and emotion. Emotion labels from the ArtEmis dataset were added.</td>
           <td>85.3%*</td>
         </tr>
         <tr>
           <td><span class="pill purple">Test 10</span></td>
           <td>ViT-B/16-384</td>
-          <td>Simplified to style+artist only (dropped emotion). Used dedicated artist CSVs. Uncertainty weighting between the two tasks.</td>
+          <td>Simplified to style+artist only (dropped emotion). Used dedicated artist CSVs.</td>
           <td>73.7%</td>
         </tr>
         <tr>
           <td><span class="pill green">Test 11</span></td>
           <td>DINOv2 ViT-B/14-336</td>
-          <td>Switched backbone to DINOv2 (self-supervised, 142M images). Added layer-wise learning rate decay (LLRD). Proper val/test split introduced.</td>
+          <td>Switched to the DINOv2 model, which was pre-trained on 142 million images using self-supervised learning. Also introduced a proper validation and test split to see if it would generalize better.</td>
           <td>74.3%†</td>
         </tr>
         <tr>
           <td><span class="pill green">Test 12</span></td>
           <td>DINOv2 ViT-B/14-448</td>
-          <td>Raised resolution from 336 to 448px. Warm-started from test 11 checkpoint. Same pipeline and LLRD schedule.</td>
+          <td>Raised resolution from 336 to 448px. Warm-started from test 11 checkpoint.</td>
           <td class="best">78.3%†</td>
+        </tr>
+        <tr>
+          <td><span class="pill teal">Test 13</span></td>
+          <td>DINOv2 ViT-B/14-448 (style + artist)</td>
+          <td>Warm-started from test 12 and added an artist head. This is the model integrated in the backend app.</td>
+          <td>78.2% style / 87.7% artist</td>
         </tr>
       </tbody>
     </table>
-    <p style="font-size:0.82rem;color:#6b7280;margin-top:8px;">* Test 9 style accuracy is measured on the merged WikiArt+ArtEmis subset, not the full validation set, so it is not directly comparable to other tests. &nbsp; † Tests 11–12 use a stratified 50/50 val/test split, so the val set is half the size of tests 1–10.</p>
-
+    <p style="font-size:0.82rem;color:#6b7280;margin-top:8px;">* Test 9 style accuracy is measured on the merged WikiArt+ArtEmis subset, not the full validation set, so it is not directly comparable to other tests.</p>
+    <p style="font-size:0.82rem;color:#6b7280;margin-top:4px;">Test 13 keeps the test 12 style performance almost the same, but adds artist prediction for the integrated app model.</p>
+    <p style="font-size:0.82rem;color:#6b7280;margin-top:4px;">Test 13 also measured artist accuracy: 87.7% on validation and 88.0% on test.</p>
     <div class="chart-row" style="margin-top: 18px;">
       <div class="chart-wrap full">
-        <div class="chart-title">Validation accuracy progression across tests 1 to 12 (style top-1)</div>
+        <div class="chart-title">Validation accuracy progression across tests 1 to 13 (style top-1)</div>
         <canvas id="chartAccuracyLine" height="120"></canvas>
       </div>
     </div>
@@ -485,13 +493,13 @@
   <p class="section-label">Training Pipeline</p>
 
   <section class="panel">
-    <h2>4. Core Training Pipeline</h2>
+    <h2>4. Training Methods Used</h2>
     <p>
       Even as the model type changed between tests, the core training loop stayed the same every time.
       That consistency made it easy to compare results fairly: if accuracy went up, I knew it was because of the specific thing I changed, not because the whole setup was different.
     </p>
     <p>
-      The pattern was always: load pretrained weights, swap out the classification head for 27 style classes, pick a loss function and optimizer, run the training loop, save the best checkpoint.
+     The process was always similar: start with a pretrained model, replace the final layer so it could predict 27 art styles, choose the training settings, train the model, and save the best version.
     </p>
 
     <h3>Transfer learning setup (tests 1-2, ResNet18 baseline)</h3>
@@ -509,84 +517,103 @@ criterion = nn.CrossEntropyLoss()
 optimizer = torch.optim.Adam(model.parameters(), lr=1e-4)</code></pre>
     </div>
 
-    <h3>Train/validation loop</h3>
-    <p>
-      The same loop function was used in every test. Passing an optimizer makes it train, leaving it out makes it evaluate. This avoids having two separate copies of nearly identical code.
-    </p>
-    <div class="code-box">
-      <div class="code-title">Single function handles both training and evaluation</div>
-      <pre><code class="language-python">def run_one_epoch(model, loader, criterion, optimizer=None):
+    <h3>Training and validation loop</h3>
+<p>
+  The same function was used in every test to run one full pass through the dataset. During training the model updated its weights and learned from mistakes, while during validation it only measured performance without changing the model.
+</p>
+
+<div class="code-box">
+  <div class="code-title">One function used for both training and validation</div>
+  <pre><code class="language-python">def run_one_epoch(model, loader, criterion, optimizer=None):
     is_train = optimizer is not None
     model.train() if is_train else model.eval()
     total_loss, total_correct, total_samples = 0.0, 0, 0
 
     for images, labels in loader:
         images, labels = images.to(device), labels.to(device)
+
         with torch.set_grad_enabled(is_train):
             outputs = model(images)
             loss = criterion(outputs, labels)
+
             if is_train:
                 optimizer.zero_grad()
                 loss.backward()
                 optimizer.step()
 
         preds = outputs.argmax(dim=1)
-        total_loss    += loss.item() * labels.size(0)
+
+        total_loss += loss.item() * labels.size(0)
         total_correct += (preds == labels).sum().item()
         total_samples += labels.size(0)
 
     return total_loss / total_samples, total_correct / total_samples</code></pre>
-    </div>
+</div>
 
-    <h3>Top-k accuracy tracking</h3>
-    <p>
-      From test 4 onwards I also tracked top-5 accuracy. That means: was the correct style in the model's top 5 guesses? For art style classification with 27 classes that can be quite forgiving, but it's still useful to see how close the model gets when it's wrong.
-    </p>
-    <div class="code-box">
-      <div class="code-title">Computing top-1 and top-5 accuracy from model outputs</div>
-      <pre><code class="language-python">def topk_accuracies(logits, targets, topk=(1, 5)):
+<h3>Top-1 and Top-5 accuracy</h3>
+<p>
+  From test 4 onwards I also tracked top-5 accuracy. This checks whether the correct art style appeared in the model’s top 5 predictions instead of only the first prediction. With 27 classes this is more forgiving, but it still shows whether the model was close when it made a mistake.
+</p>
+
+<div class="code-box">
+  <div class="code-title">Calculating top-1 and top-5 accuracy</div>
+  <pre><code class="language-python">def topk_accuracies(logits, targets, topk=(1, 5)):
     max_k = min(max(topk), logits.size(1))
+
     _, pred = logits.topk(max_k, dim=1, largest=True, sorted=True)
     pred = pred.t()
+
     correct = pred.eq(targets.view(1, -1).expand_as(pred))
 
     results = []
+
     for k in topk:
         kk = min(k, logits.size(1))
         correct_k = correct[:kk].reshape(-1).float().sum(0)
         results.append(correct_k.item() / targets.size(0))
+
     return results</code></pre>
-    </div>
+</div>
   </section>
 
   <!-- SECTION: ADAPTATION TECHNIQUES -->
   <p class="section-label">Adaptation Techniques</p>
 
   <section class="panel">
-    <h2>5. Two-Stage Fine-Tuning</h2>
-    <p>
-      From test 4 onwards I switched to a two-stage training approach. The idea is that a pretrained model already knows a lot about images from ImageNet training, and if you immediately update all the weights with a high learning rate you can destroy that knowledge.
-    </p>
-    <p>
-      So the first stage only trains the new classification head while everything else is frozen. Once the head has settled, stage two unfreezes the whole model and fine-tunes everything with a much lower learning rate.
-    </p>
+  <h2>5. Two-Stage Training</h2>
 
-    <div class="code-box">
-      <div class="code-title">Freeze backbone, then unfreeze for full fine-tuning</div>
-      <pre><code class="language-python">def freeze_backbone(model, model_name: str):
+  <p>
+    Training was done in two steps.
+  </p>
+
+  <p>
+    In step 1, only the final prediction layer was trained. The rest of the model stayed unchanged. This let the model first learn which visual patterns belong to the 27 art styles.
+  </p>
+
+  <p>
+    In step 2, the whole model was trained together. This allowed the deeper parts of the model to better adapt to paintings and improve accuracy further.
+  </p>
+
+  <div class="code-box">
+    <div class="code-title">Train the final layer first, then train the whole model</div>
+    <pre><code class="language-python">def freeze_backbone(model, model_name: str):
     # Lock all weights
     for p in model.parameters():
         p.requires_grad = False
+
     # Unlock only the classification head
     for p in get_classifier_parameters(model, model_name):
         p.requires_grad = True
+
 
 def unfreeze_all(model):
     for p in model.parameters():
         p.requires_grad = True
 
+
 # Stage 1: train head only (5 epochs)
 freeze_backbone(model, cfg.model_name)
+
 optimizer_head = torch.optim.AdamW(
     filter(lambda p: p.requires_grad, model.parameters()),
     lr=cfg.head_lr
@@ -594,32 +621,37 @@ optimizer_head = torch.optim.AdamW(
 
 # Stage 2: fine-tune everything with lower learning rates
 unfreeze_all(model)
+
 optimizer_ft = torch.optim.AdamW([
     {"params": backbone_params, "lr": cfg.ft_backbone_lr},
     {"params": head_params,     "lr": cfg.ft_head_lr},
 ])</code></pre>
-    </div>
+  </div>
 
-    <div class="note">
-      The backbone and head get different learning rates in stage 2. The backbone gets 1e-5 (very small, don't overwrite what it already learned) and the head gets 3e-5 (a bit higher, it still has more to learn).
-    </div>
-  </section>
+  <div class="note">
+    Smaller learning rates were used in stage 2 so the pretrained image knowledge was not changed too aggressively.
+  </div>
+</section>
 
-  <section class="panel">
-    <h2>6. MixUp, CutMix, and Label Smoothing</h2>
-    <p>
-      These three techniques all work on the same problem: stopping the model from being overconfident on the training data.
-      If you just train on raw images and hard labels, the model can end up very certain about training examples but wrong on anything slightly different. These techniques make training a bit harder on purpose so the model learns more general patterns.
-    </p>
-    <ul>
-      <li><strong>MixUp:</strong> blends two images together and creates a blended label. For example, 60% Impressionism + 40% Baroque creates a mixed image and a target of [0.6, 0.4] instead of [1.0, 0.0].</li>
-      <li><strong>CutMix:</strong> pastes a rectangle from one image onto another. Similar idea but it keeps hard edges instead of blending pixels, so the model still learns local texture details.</li>
-      <li><strong>Label smoothing:</strong> instead of a "1.0" label for the correct class, it uses something like 0.92 and spreads the remaining 0.08 across other classes. This makes the model slightly less certain by design.</li>
-    </ul>
+<section class="panel">
+  <h2>6. MixUp, CutMix, and Label Smoothing</h2>
 
-    <div class="code-box">
-      <div class="code-title">Training config from test 8 (best run)</div>
-      <pre><code class="language-python">@dataclass
+  <p>
+    These techniques were used to stop the model from becoming too confident on the training data. The goal was to help the model generalize better to new images instead of memorizing the training set.
+  </p>
+
+  <ul>
+    <li><strong>MixUp:</strong> combines two images and their labels into one mixed training example.</li>
+
+    <li><strong>CutMix:</strong> cuts part of one image and places it into another image, while also mixing the labels.</li>
+
+    <li><strong>Label smoothing:</strong> makes the labels slightly softer so the model does not become too certain about every prediction.</li>
+  </ul>
+
+  <div class="code-box">
+    <div class="code-title">Training config from test 8 (best run)</div>
+
+    <pre><code class="language-python">@dataclass
 class TrainConfig:
     model_name:           str   = "vit_base_patch16_384.augreg_in21k_ft_in1k"
     image_size:           int   = 384
@@ -640,27 +672,32 @@ class TrainConfig:
     ema_decay:            float = 0.9997
     grad_clip_norm:       float = 1.0
     tta:                  bool  = True</code></pre>
-    </div>
-  </section>
+  </div>
+</section>
 
-  <section class="panel">
-    <h2>7. Gradient Accumulation, EMA, and Early Stopping</h2>
-    <p>
-      Three more techniques that all deal with training stability.
-    </p>
+<section class="panel">
+  <h2>7. Training Stability Techniques</h2>
 
-    <h3>Gradient accumulation</h3>
-    <p>
-      The ViT model at 384px input is quite large. I couldn't fit a big batch in memory, so I used a batch size of 12 but accumulated gradients over 4 steps before updating the weights. That means the model effectively trains on 48 images at once, which is more stable than 12. The weights only update every 4 steps.
-    </p>
+  <p>
+    These techniques were used to make training more stable, reduce overfitting, and improve accuracy.
+  </p>
 
-    <div class="code-box">
-      <div class="code-title">Gradient accumulation over 4 steps (effective batch = 48)</div>
-      <pre><code class="language-python">accum_steps = cfg.effective_batch_size // cfg.batch_size  # = 4
+  <h3>Combining Smaller Training Steps</h3>
+
+  <p>
+    The ViT model with 384px images was too large to train with many images at once because of GPU memory limits. To solve this, the model processed 12 images at a time, but waited 4 steps before updating the weights. This made training behave more like using a batch size of 48 images.
+  </p>
+
+  <div class="code-box">
+    <div class="code-title">Combining Smaller Training Steps (effective batch = 48)</div>
+
+    <pre><code class="language-python">accum_steps = cfg.effective_batch_size // cfg.batch_size  # = 4
 
 optimizer.zero_grad()
+
 for step, (images, labels) in enumerate(train_loader):
     images, labels = images.to(device), labels.to(device)
+
     images, soft_targets = mixup_cutmix(images, labels, ...)
 
     with torch.cuda.amp.autocast():
@@ -672,25 +709,25 @@ for step, (images, labels) in enumerate(train_loader):
     if (step + 1) % accum_steps == 0:
         scaler.unscale_(optimizer)
         torch.nn.utils.clip_grad_norm_(model.parameters(), cfg.grad_clip_norm)
+
         scaler.step(optimizer)
         scaler.update()
+
         optimizer.zero_grad()
+
         ema.update(model)  # update EMA weights after each real step</code></pre>
-    </div>
+  </div>
 
-    <h3>EMA (Exponential Moving Average)</h3>
-    <p>
-      Instead of always using the model from the most recent training step (which can be noisy), EMA keeps a smoothed version of the weights that slowly follows the training weights. At evaluation time I used the EMA weights instead. The result is usually a bit more stable and often slightly more accurate.
-    </p>
+  <h3>Early stopping</h3>
 
-    <h3>Early stopping</h3>
-    <p>
-      I set a patience value in each test. If the validation accuracy didn't improve for that many consecutive epochs, training stopped automatically. This prevented wasting time on epochs that weren't helping, and also stopped the model from starting to overfit.
-    </p>
+  <p>
+    Early stopping automatically stopped training when validation accuracy stopped improving for several epochs. This helped avoid wasting training time and reduced overfitting.
+  </p>
 
-    <div class="code-box">
-      <div class="code-title">Early stopping logic</div>
-      <pre><code class="language-python">best_val_top1 = 0.0
+  <div class="code-box">
+    <div class="code-title">Early stopping logic</div>
+
+    <pre><code class="language-python">best_val_top1 = 0.0
 patience_counter = 0
 
 for epoch in range(total_epochs):
@@ -699,22 +736,24 @@ for epoch in range(total_epochs):
     if val_top1 > best_val_top1:
         best_val_top1 = val_top1
         patience_counter = 0
+
         torch.save(ema_model.state_dict(), checkpoint_path)  # save best
+
     else:
         patience_counter += 1
+
         if patience_counter >= cfg.patience:
             print(f"Early stopping at epoch {epoch}")
             break</code></pre>
-    </div>
-  </section>
-
+  </div>
+</section>
   <!-- SECTION: TEST 9 -->
   <p class="section-label">Test 9: Multitask Learning</p>
 
   <section class="panel">
     <h2>8. Test 9: Training Three Tasks at Once</h2>
     <p>
-      Test 9 is the most ambitious experiment. Instead of just predicting art style, the model now predicts style, artist, and emotion all from the same image, using the same backbone network. The idea is that learning all three things at once should push the backbone to pick up on more visual detail than it would from style labels alone.
+      Test 9 is the most difficult experiment. Instead of just predicting art style, the model now predicts style, artist, and emotion all from the same image. The idea is that learning all three things at once should push the model to pick up on more visual detail than it would from style labels alone.
     </p>
     <ul>
       <li><strong>Style head:</strong> 27 art style classes (Impressionism, Cubism, etc.), same as every previous test</li>
@@ -722,47 +761,9 @@ for epoch in range(total_epochs):
       <li><strong>Emotion head:</strong> 7 emotion classes (anger, disgust, fear, joy, sadness, surprise, trust), from the ArtEmis dataset</li>
     </ul>
 
-    <h3>Three-head architecture</h3>
-    <p>
-      Each head is a small MLP (two linear layers with a normalisation layer and activation in between) connected to the same shared ViT backbone. The backbone outputs one feature vector per image, and all three heads read from that same vector.
-    </p>
-
-    <div class="code-box">
-      <div class="code-title">Building the three task heads on top of a shared backbone</div>
-      <pre><code class="language-python">class MultiTaskModel(nn.Module):
-    def __init__(self, backbone, feat_dim, n_style, n_artist, n_emotion):
-        super().__init__()
-        self.backbone = backbone
-
-        def make_head(out_dim):
-            return nn.Sequential(
-                nn.Linear(feat_dim, feat_dim),
-                nn.BatchNorm1d(feat_dim),
-                nn.GELU(),
-                nn.Linear(feat_dim, out_dim)
-            )
-
-        self.style_head   = make_head(n_style)
-        self.artist_head  = make_head(n_artist)
-        self.emotion_head = make_head(n_emotion)
-
-        # Learnable weights for each task's loss contribution
-        self.log_var_style   = nn.Parameter(torch.zeros(1))
-        self.log_var_artist  = nn.Parameter(torch.zeros(1))
-        self.log_var_emotion = nn.Parameter(torch.zeros(1))
-
-    def forward(self, x):
-        features = self.backbone(x)
-        return (
-            self.style_head(features),
-            self.artist_head(features),
-            self.emotion_head(features),
-        )</code></pre>
-    </div>
-
     <h3>Handling missing emotion labels</h3>
     <p>
-      Not every WikiArt image has an emotion annotation in ArtEmis. Rather than throwing those images away, I kept them and just skipped the emotion loss for that row. Emotion loss is only calculated where a valid emotion label exists.
+      Not every WikiArt image has an emotion label in ArtEmis. Rather than throwing those images away, I kept them and just skipped the emotion prediction for that row. 
     </p>
 
     <div class="code-box">
@@ -808,179 +809,212 @@ loss_total = (
   </section>
 
   <!-- SECTION: DINOV2 + LLRD -->
-  <p class="section-label">Tests 11–12: New Backbone</p>
+  <p class="section-label">Tests 11–12: New model</p>
 
   <section class="panel">
-    <h2>9. DINOv2 and Layer-wise Learning Rate Decay (LLRD)</h2>
-    <p>
-      Tests 11 and 12 introduced a completely different backbone: <strong>DINOv2</strong>. Up to test 10, every model used a ViT trained on ImageNet with standard supervised learning. DINOv2 was trained differently: it learned by comparing images to each other (self-supervised) using 142 million images, without any human-provided labels. That extra training makes its features richer, especially for fine-grained differences like distinguishing art styles that look visually similar.
-    </p>
+  <h2>9. DINOv2 and Smarter Fine-Tuning</h2>
 
-    <h3>What is LLRD?</h3>
-    <p>
-      LLRD stands for Layer-wise Learning Rate Decay. A transformer model has many layers stacked on top of each other. The first layers learn basic things like edges and textures. The later layers learn more specific, high-level patterns. When fine-tuning, you don't want to change the early layers much because they already have good general knowledge. LLRD solves this by giving each layer a slightly smaller learning rate the deeper you go into the network (i.e. the earlier the layer, the lower the rate).
-    </p>
+  <p>
+    Tests 11 and 12 used a different pretrained model called DINOv2. Earlier tests used models trained with normal labeled image training, while DINOv2 learned from 142 million images by comparing images to each other without human labels.
+  </p>
 
-    <div class="code-box">
-      <div class="code-title">LLRD: earlier transformer blocks get lower learning rates</div>
-      <pre><code class="language-python"># Each transformer block gets a learning rate multiplied by decay^(depth from top)
+  <p>
+    This gave the model stronger visual features, especially for small visual differences between art styles.
+  </p>
+
+  <h3>Different learning rates for different layers</h3>
+
+  <p>
+    Not every part of the model was trained equally. Earlier layers already contained useful general image knowledge, so they were updated more slowly. Later layers were updated more strongly because they needed to adapt more to the art style task.
+  </p>
+
+  <div class="code-box">
+    <div class="code-title">Earlier layers train more slowly than later layers</div>
+    <pre><code class="language-python"># Each transformer block gets a learning rate multiplied by decay^(depth from top)
 llrd_decay = 0.75
 base_lr    = cfg.ft_backbone_lr  # e.g. 1e-4
 
 param_groups = []
+
 for block_idx, block in enumerate(reversed(model.backbone.blocks)):
     lr = base_lr * (llrd_decay ** block_idx)
     param_groups.append({"params": block.parameters(), "lr": lr})
 
 # The later (top) blocks train faster, early blocks train slower</code></pre>
+  </div>
+
+  <h3>Using larger image sizes</h3>
+
+  <p>
+    Test 12 increased the image size from 336px to 448px. Larger images contain more visual detail, which helped the model better recognize fine differences between painting styles.
+  </p>
+
+  <p>
+    Test 12 also started from the trained weights of test 11 instead of starting from scratch, so it reached good results faster.
+  </p>
+
+  <div class="note">
+    Test 12 reached 78.3% validation accuracy, the best result across all experiments.
+  </div>
+</section>
+
+<p class="section-label">Results</p>
+
+<section class="panel">
+  <h2>10. Results from All Tests</h2>
+
+  <p>
+    This table shows the accuracy results from every test.
+  </p>
+
+  <p>
+    Top-1 accuracy means the model’s first prediction was correct. Top-5 accuracy means the correct art style appeared somewhere in the model’s five best guesses.
+  </p>
+
+  <table>
+    <thead>
+      <tr>
+        <th>Test</th>
+        <th>Model</th>
+        <th>Val Top-1</th>
+        <th>Val Top-5</th>
+        <th>Test Top-1</th>
+        <th>Test Top-5</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><span class="pill blue">Test 1</span></td>
+        <td>ResNet18</td>
+        <td>53.0%</td>
+        <td>n/a</td>
+        <td>53.0%</td>
+        <td>n/a</td>
+      </tr>
+      <tr>
+        <td><span class="pill blue">Test 2</span></td>
+        <td>ResNet18</td>
+        <td>57.8%</td>
+        <td>n/a</td>
+        <td>57.7%</td>
+        <td>n/a</td>
+      </tr>
+      <tr>
+        <td><span class="pill blue">Test 3</span></td>
+        <td>ResNet50</td>
+        <td>63.2%</td>
+        <td>n/a</td>
+        <td>63.2%</td>
+        <td>n/a</td>
+      </tr>
+      <tr>
+        <td><span class="pill blue">Test 4</span></td>
+        <td>ConvNeXt-Tiny</td>
+        <td>66.9%</td>
+        <td>76.6%</td>
+        <td>65.4%</td>
+        <td>75.8%</td>
+      </tr>
+      <tr>
+        <td><span class="pill blue">Test 5</span></td>
+        <td>ViT-B/16-384</td>
+        <td>69.3%</td>
+        <td>79.2%</td>
+        <td>68.1%</td>
+        <td>77.8%</td>
+      </tr>
+      <tr>
+        <td><span class="pill blue">Test 6</span></td>
+        <td>ViT-B/16-384</td>
+        <td>75.9%</td>
+        <td>97.6%</td>
+        <td>74.9%</td>
+        <td>97.2%</td>
+      </tr>
+      <tr>
+        <td><span class="pill blue">Test 7</span></td>
+        <td>ViT-B/16-384</td>
+        <td>76.5%</td>
+        <td>97.6%</td>
+        <td>75.8%</td>
+        <td>97.2%</td>
+      </tr>
+      <tr>
+        <td><span class="pill blue">Test 8</span></td>
+        <td>ViT-B/16-384</td>
+        <td class="best">76.7%</td>
+        <td class="best">97.5%</td>
+        <td class="best">75.9%</td>
+        <td class="best">96.9%</td>
+      </tr>
+      <tr>
+        <td><span class="pill purple">Test 9</span></td>
+        <td>ViT-B/16-384 (multitask)</td>
+        <td>85.3%*</td>
+        <td>n/a</td>
+        <td>86.1%*</td>
+        <td>n/a</td>
+      </tr>
+      <tr>
+        <td><span class="pill purple">Test 10</span></td>
+        <td>ViT-B/16-384 (style+artist)</td>
+        <td>73.7%</td>
+        <td>n/a</td>
+        <td>n/a</td>
+        <td>n/a</td>
+      </tr>
+      <tr>
+        <td><span class="pill green">Test 11</span></td>
+        <td>DINOv2 ViT-B/14-336</td>
+        <td>74.3%†</td>
+        <td>97.6%</td>
+        <td>73.2%†</td>
+        <td>97.5%</td>
+      </tr>
+      <tr>
+        <td><span class="pill green">Test 12</span></td>
+        <td>DINOv2 ViT-B/14-448</td>
+        <td class="best">78.3%†</td>
+        <td class="best">96.7%</td>
+        <td class="best">77.3%†</td>
+        <td class="best">96.5%</td>
+      </tr>
+      <tr>
+        <td><span class="pill teal">Test 13</span></td>
+        <td>DINOv2 ViT-B/14-448 (style+artist)</td>
+        <td>78.2%</td>
+        <td>96.9%</td>
+        <td>77.4%</td>
+        <td>96.4%</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <p style="font-size:0.82rem;color:#6b7280;margin-top:8px;">
+    * Test 9 was measured on the smaller WikiArt + ArtEmis subset, not the full validation set.
+    &nbsp; † Tests 11–12 use a smaller stratified validation/test split.
+  </p>
+
+  <p style="font-size:0.82rem;color:#6b7280;margin-top:4px;">
+    Test 13 also measured artist accuracy separately: 87.7% validation and 88.0% test.
+  </p>
+
+  <div class="chart-row" style="margin-top: 18px;">
+    <div class="chart-wrap">
+      <div class="chart-title">Top-1 vs Top-5 validation accuracy by test</div>
+      <canvas id="chartTop1Top5" height="260"></canvas>
     </div>
 
-    <h3>Resolution: 336px → 448px</h3>
-    <p>
-      DINOv2 uses patch size 14. At 336px that gives 24×24 = 576 patches per image. Test 12 raised the input to 448px, giving 32×32 = 1024 patches, which gives the model more detail to work with. The test 12 model was warm-started from the test 11 checkpoint rather than starting from scratch, so it didn't need as many epochs to reach a good result.
-    </p>
-
-    <div class="note">
-      Test 12 reached 78.3% val accuracy, the best result across all 12 tests, beating the previous best (test 8, ViT 76.7%) by 1.6 percentage points.
+    <div class="chart-wrap">
+      <div class="chart-title">Accuracy improvement compared to Test 1</div>
+      <canvas id="chartGain" height="260"></canvas>
     </div>
-  </section>
+  </div>
 
-  <!-- SECTION: RESULTS -->
-  <p class="section-label">Results</p>
-
-  <section class="panel">
-    <h2>10. Full Results Across All Tests</h2>
-    <p>
-      Here are the actual numbers from every test. Top-1 accuracy means the model's first guess was correct. Top-5 means the correct style was somewhere in the model's 5 best guesses. For a 27-class problem, top-5 at 97.5% is quite strong.
-    </p>
-
-    <table>
-      <thead>
-        <tr>
-          <th>Test</th>
-          <th>Model</th>
-          <th>Val Top-1</th>
-          <th>Val Top-5</th>
-          <th>Test Top-1</th>
-          <th>Test Top-5</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr>
-          <td><span class="pill blue">Test 1</span></td>
-          <td>ResNet18</td>
-          <td>53.0%</td>
-          <td>n/a</td>
-          <td>53.0%</td>
-          <td>n/a</td>
-        </tr>
-        <tr>
-          <td><span class="pill blue">Test 2</span></td>
-          <td>ResNet18</td>
-          <td>57.8%</td>
-          <td>n/a</td>
-          <td>57.7%</td>
-          <td>n/a</td>
-        </tr>
-        <tr>
-          <td><span class="pill blue">Test 3</span></td>
-          <td>ResNet50</td>
-          <td>63.2%</td>
-          <td>n/a</td>
-          <td>63.2%</td>
-          <td>n/a</td>
-        </tr>
-        <tr>
-          <td><span class="pill blue">Test 4</span></td>
-          <td>ConvNeXt-Tiny</td>
-          <td>66.9%</td>
-          <td>76.6%</td>
-          <td>65.4%</td>
-          <td>75.8%</td>
-        </tr>
-        <tr>
-          <td><span class="pill blue">Test 5</span></td>
-          <td>ViT-B/16-384</td>
-          <td>69.3%</td>
-          <td>79.2%</td>
-          <td>68.1%</td>
-          <td>77.8%</td>
-        </tr>
-        <tr>
-          <td><span class="pill blue">Test 6</span></td>
-          <td>ViT-B/16-384</td>
-          <td>75.9%</td>
-          <td>97.6%</td>
-          <td>74.9%</td>
-          <td>97.2%</td>
-        </tr>
-        <tr>
-          <td><span class="pill blue">Test 7</span></td>
-          <td>ViT-B/16-384</td>
-          <td>76.5%</td>
-          <td>97.6%</td>
-          <td>75.8%</td>
-          <td>97.2%</td>
-        </tr>
-        <tr>
-          <td><span class="pill blue">Test 8</span></td>
-          <td>ViT-B/16-384</td>
-          <td class="best">76.7%</td>
-          <td class="best">97.5%</td>
-          <td class="best">75.9%</td>
-          <td class="best">96.9%</td>
-        </tr>
-        <tr>
-          <td><span class="pill purple">Test 9</span></td>
-          <td>ViT-B/16-384 (multitask)</td>
-          <td>85.3%*</td>
-          <td>n/a</td>
-          <td>86.1%*</td>
-          <td>n/a</td>
-        </tr>
-        <tr>
-          <td><span class="pill purple">Test 10</span></td>
-          <td>ViT-B/16-384 (style+artist)</td>
-          <td>73.7%</td>
-          <td>n/a</td>
-          <td>n/a</td>
-          <td>n/a</td>
-        </tr>
-        <tr>
-          <td><span class="pill green">Test 11</span></td>
-          <td>DINOv2 ViT-B/14-336</td>
-          <td>74.3%†</td>
-          <td>97.6%</td>
-          <td>73.2%†</td>
-          <td>97.5%</td>
-        </tr>
-        <tr>
-          <td><span class="pill green">Test 12</span></td>
-          <td>DINOv2 ViT-B/14-448</td>
-          <td class="best">78.3%†</td>
-          <td class="best">96.7%</td>
-          <td class="best">77.3%†</td>
-          <td class="best">96.5%</td>
-        </tr>
-      </tbody>
-    </table>
-    <p style="font-size:0.82rem;color:#6b7280;margin-top:8px;">* Test 9 numbers are on the merged WikiArt+ArtEmis eval subset (not the full val set). &nbsp; † Tests 11–12 use a smaller stratified val/test split.</p>
-
-    <div class="chart-row" style="margin-top: 18px;">
-      <div class="chart-wrap">
-        <div class="chart-title">Top-1 vs Top-5 val accuracy by test</div>
-        <canvas id="chartTop1Top5" height="260"></canvas>
-      </div>
-      <div class="chart-wrap">
-        <div class="chart-title">Accuracy gain per test (Top-1, vs test 1 baseline)</div>
-        <canvas id="chartGain" height="260"></canvas>
-      </div>
-    </div>
-
-    <div class="note">
-      The biggest single jump was between test 5 and test 6 (+6.5 pp), which came from training longer with proper early stopping. The second biggest was between test 8 and test 12 (+1.6 pp), from switching to DINOv2 at a higher resolution. Going from test 1 to test 12 overall is a 25.3 percentage point improvement.
-    </div>
-  </section>
+  <div class="note">
+    The biggest improvement happened between Test 5 and Test 6, mainly because the model was trained for longer with early stopping. The best final result was Test 12, which used DINOv2 with larger 448px images.
+  </div>
+</section>
 
   <!-- SECTION: SECURITY / ETHICS -->
   <p class="section-label">Responsible Development</p>
@@ -999,26 +1033,53 @@ for block_idx, block in enumerate(reversed(model.backbone.blocks)):
         </tr>
       </thead>
       <tbody>
-        <tr>
-          <td><strong>Security</strong></td>
-          <td>The prediction flow is clean and isolated: load model, process image, return a result. No external calls, no file writes during inference.</td>
-          <td>For uploads: validate that the file is actually an image (check MIME type and file header, not just the extension), limit file size, sanitise filenames so a crafted filename can't cause path traversal issues.</td>
-        </tr>
-        <tr>
-          <td><strong>Privacy</strong></td>
-          <td>The model doesn't need any personal data to work. It only looks at pixel values. Training data came from publicly available art datasets (WikiArt, ArtBench, ArtEmis).</td>
-          <td>For a real app: don't store uploaded images longer than needed, make it clear to users what happens to their image, don't log identifiable details alongside uploaded content.</td>
-        </tr>
-        <tr>
-          <td><strong>Ethics</strong></td>
-          <td>All 27 style labels are clearly defined and based on the WikiArt folder structure. The model's training history and evaluation numbers are fully documented. There are no hidden labels or undocumented classes.</td>
-          <td>Predictions should come with a confidence score so users know when the model is unsure. Some styles are visually very similar (e.g. Impressionism vs Post-Impressionism) and the model should communicate that uncertainty rather than always committing to one answer.</td>
-        </tr>
-        <tr>
-          <td><strong>Compliance</strong></td>
-          <td>Checkpoints, training configs, and accuracy history are saved for every run. Every experiment is in a numbered notebook so the full history is traceable. All datasets used have clear origins and are research-use datasets.</td>
-          <td>For deployment: document which dataset version and model checkpoint is running in production. Keep a log of model updates so it's clear when the live model changed and what changed with it.</td>
-        </tr>
+       <tr>
+  <td><strong>Security</strong></td>
+
+  <td>
+    The prediction system is simple and isolated: load the model, process the image, and return the prediction. It does not make external connections or save files during prediction.
+  </td>
+
+  <td>
+    For uploads: make sure the uploaded file is really an image, limit upload size, and clean filenames to avoid security problems.
+  </td>
+</tr>
+
+<tr>
+  <td><strong>Privacy</strong></td>
+
+  <td>
+    The model does not use personal data. It only analyzes the image itself. The training data came from public art datasets such as WikiArt, ArtBench, and ArtEmis.
+  </td>
+
+  <td>
+    For a real application: do not keep uploaded images longer than necessary, clearly explain how images are used, and avoid storing personal information with uploads.
+  </td>
+</tr>
+
+<tr>
+  <td><strong>Ethics</strong></td>
+
+  <td>
+    The art style labels are clearly defined and based on the WikiArt dataset. The training process and evaluation results were fully documented.
+  </td>
+
+  <td>
+    Predictions should include a confidence score so users can see when the model is uncertain, especially for very similar styles.
+  </td>
+</tr>
+
+<tr>
+  <td><strong>Compliance</strong></td>
+
+  <td>
+    Training settings, saved models, and accuracy results were recorded for every experiment so the full training history can be tracked.
+  </td>
+
+  <td>
+    For deployment: keep track of which model version and dataset version are being used, and document future model updates.
+  </td>
+</tr>
       </tbody>
     </table>
   </section>
@@ -1027,17 +1088,16 @@ for block_idx, block in enumerate(reversed(model.backbone.blocks)):
   <section class="panel">
     <h2>12. Conclusion</h2>
     <p>
-      Going from 53% to 78.3% accuracy across 12 experiments wasn't one big leap. It was a series of smaller improvements that stacked up.
-      The early tests were mostly about getting the pipeline right: proper data loading, a working training loop, saving checkpoints.
-      Once that was stable, the focus shifted to stronger models, then better training techniques, then a completely different backbone.
+      Going from 53% to 78.3% accuracy across 12 experiments wasn't done all at once. It was a series of smaller improvements over those tests.
+      The early tests were mostly about getting a starting point: proper data loading, a working training loop, saving checkpoints.
+      Once that was working, the focus shifted to stronger models and then better training techniques.
     </p>
     <p>
-      The biggest single jump was between test 5 and test 6, which came mostly from training longer with proper early stopping, not from any exotic technique.
+      The biggest single jump was between test 5 and test 6, which came mostly from training longer and with different models, not from any exotic technique.
       That's a reminder that basic things like training duration often matter more than the fancy stuff.
     </p>
     <p>
-      The second biggest improvement came from switching to DINOv2 in tests 11 and 12. Using a self-supervised backbone pretrained on far more data, combined with a higher input resolution, pushed the best result to 78.3%, which is 1.6 points above the previous best from test 8.
-      The multitask experiments (tests 9 and 10) showed that adding auxiliary tasks can help the model learn richer features, though the direct style accuracy numbers are harder to compare because they use different evaluation setups.
+      The second biggest improvement came from switching to DINOv2 in tests 11 and 12. DINOv2's stronger visual features made a big difference, especially when combined with larger 448px images in test 12.
     </p>
   </section>
 
@@ -1051,7 +1111,7 @@ for block_idx, block in enumerate(reversed(model.backbone.blocks)):
   Chart.defaults.font.size = 12;
   Chart.defaults.color = "#4b5563";
 
-  const tests = ["T1", "T2", "T3", "T4", "T5", "T6", "T7", "T8", "T10", "T11", "T12"];
+  const tests = ["T1", "T2", "T3", "T4", "T5", "T6", "T7", "T8", "T10", "T11", "T12", "T13"];
 
   // Chart 1: Accuracy progression line chart (T9 excluded, different eval set)
   new Chart(document.getElementById("chartAccuracyLine"), {
@@ -1061,10 +1121,10 @@ for block_idx, block in enumerate(reversed(model.backbone.blocks)):
       datasets: [
         {
           label: "Val Top-1 accuracy",
-          data: [53.0, 57.8, 63.2, 66.9, 69.3, 75.9, 76.5, 76.7, 73.7, 74.3, 78.3],
+          data: [53.0, 57.8, 63.2, 66.9, 69.3, 75.9, 76.5, 76.7, 73.7, 74.3, 78.3, 78.2],
           borderColor: "#1d4ed8",
           backgroundColor: "rgba(29,78,216,0.08)",
-          pointBackgroundColor: ["#1d4ed8","#1d4ed8","#1d4ed8","#1d4ed8","#1d4ed8","#1d4ed8","#1d4ed8","#1d4ed8","#7c3aed","#16a34a","#16a34a"],
+          pointBackgroundColor: ["#1d4ed8","#1d4ed8","#1d4ed8","#1d4ed8","#1d4ed8","#1d4ed8","#1d4ed8","#1d4ed8","#7c3aed","#16a34a","#16a34a","#0d9488"],
           tension: 0.3,
           fill: true,
           borderWidth: 2.5,
@@ -1096,18 +1156,18 @@ for block_idx, block in enumerate(reversed(model.backbone.blocks)):
   new Chart(document.getElementById("chartTop1Top5"), {
     type: "bar",
     data: {
-      labels: ["T1", "T2", "T3", "T4", "T5", "T6", "T7", "T8", "T10", "T11", "T12"],
+      labels: ["T1", "T2", "T3", "T4", "T5", "T6", "T7", "T8", "T10", "T11", "T12", "T13"],
       datasets: [
         {
           label: "Top-1",
-          data: [53.0, 57.8, 63.2, 66.9, 69.3, 75.9, 76.5, 76.7, 73.7, 74.3, 78.3],
+          data: [53.0, 57.8, 63.2, 66.9, 69.3, 75.9, 76.5, 76.7, 73.7, 74.3, 78.3, 78.2],
           backgroundColor: "#3b82f6",
           borderRadius: 5,
           barPercentage: 0.6,
         },
         {
           label: "Top-5",
-          data: [null, null, null, 76.6, 79.2, 97.6, 97.6, 97.5, null, 97.6, 96.7],
+          data: [null, null, null, 76.6, 79.2, 97.6, 97.6, 97.5, null, 97.6, 96.7, 96.9],
           backgroundColor: "#93c5fd",
           borderRadius: 5,
           barPercentage: 0.6,
@@ -1139,7 +1199,7 @@ for block_idx, block in enumerate(reversed(model.backbone.blocks)):
       labels: tests,
       datasets: [{
         label: "Gain vs test 1 baseline (%)",
-        data: [0, 4.8, 10.2, 13.9, 16.3, 22.9, 23.5, 23.7, 20.7, 21.3, 25.3],
+        data: [0, 4.8, 10.2, 13.9, 16.3, 22.9, 23.5, 23.7, 20.7, 21.3, 25.3, 25.2],
         backgroundColor: [
           "#dbeafe","#bfdbfe","#93c5fd","#60a5fa",
           "#3b82f6","#2563eb","#1d4ed8","#1e40af",

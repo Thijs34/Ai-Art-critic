@@ -9,10 +9,15 @@ import os
 import re
 import time
 import uuid
-from collections import defaultdict, deque
+from collections import Counter, defaultdict, deque
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Deque, Dict, List, Optional, Sequence, Tuple
+
+try:
+    from chat_corpus import load_chat_corpus
+except ImportError:  # pragma: no cover - supports package-style imports in tests/tools
+    from backend.chat_corpus import load_chat_corpus
 
 
 ROOT = Path(__file__).parent.parent
@@ -108,6 +113,31 @@ def _norm_label(value: Any, default: str = "Unknown") -> str:
     return str(value).strip() or default
 
 
+def _compact_text(value: Any, max_length: int = 220) -> str:
+    if value is None:
+        return ""
+    text = " ".join(str(value).split())
+    return text[:max_length]
+
+
+def _compact_observations(value: Any) -> Dict[str, str]:
+    if not isinstance(value, dict):
+        return {}
+    allowed = {
+        "palette",
+        "composition",
+        "lighting",
+        "subject_matter",
+        "brushwork_texture",
+        "focal_points",
+    }
+    return {
+        key: _compact_text(raw)
+        for key, raw in value.items()
+        if key in allowed and _compact_text(raw)
+    }
+
+
 def build_artwork_profile(analysis: Dict[str, Any]) -> Dict[str, Any]:
     """Shape model output into a compact profile the chat layer can trust."""
     if not isinstance(analysis, dict):
@@ -147,6 +177,10 @@ def build_artwork_profile(analysis: Dict[str, Any]) -> Dict[str, Any]:
         "title": analysis.get("artworkTitle") or analysis.get("title") or llm.get("title"),
         "emotional_tone": analysis.get("emotionalTone") or analysis.get("emotional_tone") or llm.get("emotional_tone"),
         "context": analysis.get("context") or llm.get("context"),
+        "visual_observations": (
+            _compact_observations(analysis.get("visual_observations"))
+            or _compact_observations(llm.get("visual_observations"))
+        ),
         "retrieval_hits": [
             {
                 "artist": hit.get("artist"),
@@ -319,94 +353,98 @@ def _cosine(left: Sequence[float], right: Sequence[float]) -> float:
     return dot / (left_norm * right_norm)
 
 
-class LightweightArtRetriever:
-    """Small retriever for style, technique, and ArtEmis emotional examples."""
+class ChatKnowledgeIndex:
+    """Small lexical vector index for chat RAG without adding a heavy dependency."""
 
     def __init__(self, artemis_path: Path = ARTEMIS_CSV, max_artemis_rows: Optional[int] = None):
         self.artemis_path = artemis_path
         self.max_artemis_rows = max_artemis_rows or int(os.environ.get("ARTEMIS_RAG_MAX_ROWS", 6000))
-        self._artemis_loaded = False
-        self._artemis_docs: List[RetrievedContext] = []
-        self.semantic = OptionalSemanticReranker()
+        self._loaded = False
+        self._docs: List[RetrievedContext] = []
+        self._doc_vectors: List[Dict[str, float]] = []
+        self._idf: Dict[str, float] = {}
 
-    def retrieve(self, profile: Dict[str, Any], query: str, limit: int = 6) -> List[RetrievedContext]:
-        buckets: Dict[str, List[RetrievedContext]] = {
-            "style": self._retrieve_style(profile),
-            "technique": self._retrieve_technique(query),
-            "artemis": self._retrieve_artemis(profile, query, limit=limit * 3),
-        }
-        candidates = [doc for docs in buckets.values() for doc in docs]
-        candidates = self.semantic.rerank(self._semantic_query(profile, query), candidates)
-        return self._balanced(candidates, limit=limit)
-
-    def _retrieve_style(self, profile: Dict[str, Any]) -> List[RetrievedContext]:
-        style = profile.get("style") or ""
-        if style in STYLE_REFERENCES:
-            confidence = profile.get("style_confidence")
-            score = 1.15 if confidence is None or confidence >= 55 else 0.85
-            return [RetrievedContext(
-                f"Movement: {style}",
-                STYLE_REFERENCES[style],
-                "curated-style",
-                score,
-                kind="style",
-                grounding="style lens, not definitive attribution",
-            )]
-        return []
-
-    def _retrieve_technique(self, query: str) -> List[RetrievedContext]:
-        docs: List[RetrievedContext] = []
-        query_tokens = set(_tokenize(query))
-        for key, text in TECHNIQUE_REFERENCES.items():
-            key_tokens = set(_tokenize(key + " " + text))
-            overlap = len(query_tokens & key_tokens)
-            baseline = key in {"brushwork", "composition", "emotion"}
-            if key in query.lower() or overlap or baseline:
-                docs.append(RetrievedContext(
-                    f"Interpretive lens: {key}",
-                    text,
-                    "curated-technique",
-                    0.72 + min(0.25, overlap * 0.06),
-                    kind="technique",
-                    grounding="visual-analysis lens",
-                ))
-        return sorted(docs, key=lambda doc: doc.score, reverse=True)
-
-    def _retrieve_artemis(self, profile: Dict[str, Any], query: str, limit: int) -> List[RetrievedContext]:
-        self._load_artemis()
-        if not self._artemis_docs:
+    def search(self, profile: Dict[str, Any], query: str, limit: int = 24) -> List[RetrievedContext]:
+        self._load()
+        if not self._docs:
             return []
 
-        query_tokens = set(_tokenize(" ".join([
-            query,
-            str(profile.get("style") or ""),
-            str(profile.get("context") or ""),
-        ])))
-        style = str(profile.get("style") or "").lower()
-        scored: List[RetrievedContext] = []
-        for doc in self._artemis_docs:
-            tokens = set(_tokenize(doc.text + " " + doc.title))
-            score = len(query_tokens & tokens) / max(4, len(query_tokens))
-            if style and style in doc.title.lower():
-                score += 0.22
-            if score > 0:
-                scored.append(RetrievedContext(
-                    doc.title,
-                    doc.text,
-                    doc.source,
-                    min(0.78, score),
-                    kind="emotional-parallel",
-                    grounding="ArtEmis emotional parallel, not factual evidence",
-                ))
-        scored.sort(key=lambda doc: doc.score, reverse=True)
-        return scored[:limit]
+        query_vec = self._vectorize(self._query_text(profile, query))
+        if not query_vec:
+            return []
 
-    def _load_artemis(self) -> None:
-        if self._artemis_loaded:
+        style = str(profile.get("style") or "").lower()
+        asked = set(_tokenize(query))
+        ranked: List[RetrievedContext] = []
+        for doc, doc_vec in zip(self._docs, self._doc_vectors):
+            score = _sparse_cosine(query_vec, doc_vec)
+            title = doc.title.lower()
+            if style and doc.kind == "style" and style in title:
+                score += 0.35
+            if doc.kind == "technique" and asked & set(_tokenize(doc.title)):
+                score += 0.18
+            if doc.kind == "emotional-parallel" and asked & {"mood", "emotion", "feeling", "tone"}:
+                score += 0.08
+            if score <= 0:
+                continue
+            ranked.append(RetrievedContext(
+                doc.title,
+                doc.text,
+                doc.source,
+                score,
+                kind=doc.kind,
+                grounding=doc.grounding,
+            ))
+        ranked.sort(key=lambda item: item.score, reverse=True)
+        return ranked[:limit]
+
+    def _load(self) -> None:
+        if self._loaded:
             return
-        self._artemis_loaded = True
+        self._loaded = True
+        docs: List[RetrievedContext] = []
+
+        for style, text in STYLE_REFERENCES.items():
+            docs.append(RetrievedContext(
+                f"Movement: {style}",
+                text,
+                "curated-style",
+                0.0,
+                kind="style",
+                grounding="style lens, not definitive attribution",
+            ))
+
+        for key, text in TECHNIQUE_REFERENCES.items():
+            docs.append(RetrievedContext(
+                f"Interpretive lens: {key}",
+                text,
+                "curated-technique",
+                0.0,
+                kind="technique",
+                grounding="visual-analysis lens",
+            ))
+
+        docs.extend(self._load_corpus_docs())
+        docs.extend(self._load_artemis_docs())
+        self._docs = docs
+        self._build_vectors()
+
+    def _load_corpus_docs(self) -> List[RetrievedContext]:
+        docs: List[RetrievedContext] = []
+        for row in load_chat_corpus():
+            docs.append(RetrievedContext(
+                title=row["title"],
+                text=row["text"],
+                source=row["source"],
+                score=0.0,
+                kind=row["kind"],
+                grounding=row["grounding"],
+            ))
+        return docs
+
+    def _load_artemis_docs(self) -> List[RetrievedContext]:
         if not self.artemis_path.exists():
-            return
+            return []
 
         per_emotion: Dict[str, int] = defaultdict(int)
         docs: List[RetrievedContext] = []
@@ -428,13 +466,76 @@ class LightweightArtRetriever:
                         source="ArtEmis",
                         score=0.0,
                         kind="emotional-parallel",
-                        grounding="emotional phrasing reference",
+                        grounding="ArtEmis emotional parallel, not factual evidence",
                     ))
                     if len(docs) >= self.max_artemis_rows:
                         break
         except (OSError, csv.Error):
-            docs = []
-        self._artemis_docs = docs
+            return []
+        return docs
+
+    def _build_vectors(self) -> None:
+        doc_tokens = [_tokenize(f"{doc.title} {doc.text}") for doc in self._docs]
+        doc_freq: Counter[str] = Counter()
+        for tokens in doc_tokens:
+            doc_freq.update(set(tokens))
+        doc_count = max(1, len(doc_tokens))
+        self._idf = {
+            token: 1.0 + (doc_count / (1 + freq)) ** 0.5
+            for token, freq in doc_freq.items()
+        }
+        self._doc_vectors = [self._vectorize_tokens(tokens) for tokens in doc_tokens]
+
+    def _vectorize(self, text: str) -> Dict[str, float]:
+        return self._vectorize_tokens(_tokenize(text))
+
+    def _vectorize_tokens(self, tokens: Sequence[str]) -> Dict[str, float]:
+        counts = Counter(tokens)
+        total = sum(counts.values()) or 1
+        return {
+            token: (count / total) * self._idf.get(token, 1.0)
+            for token, count in counts.items()
+        }
+
+    def _query_text(self, profile: Dict[str, Any], query: str) -> str:
+        observations = profile.get("visual_observations") or {}
+        if isinstance(observations, dict):
+            observation_text = " ".join(str(value) for value in observations.values())
+        else:
+            observation_text = ""
+        return " ".join([
+            query,
+            str(profile.get("style") or ""),
+            str(profile.get("emotional_tone") or ""),
+            str(profile.get("context") or ""),
+            observation_text,
+        ])
+
+
+def _sparse_cosine(left: Dict[str, float], right: Dict[str, float]) -> float:
+    if not left or not right:
+        return 0.0
+    if len(left) > len(right):
+        left, right = right, left
+    dot = sum(weight * right.get(token, 0.0) for token, weight in left.items())
+    left_norm = sum(weight * weight for weight in left.values()) ** 0.5
+    right_norm = sum(weight * weight for weight in right.values()) ** 0.5
+    if not left_norm or not right_norm:
+        return 0.0
+    return dot / (left_norm * right_norm)
+
+
+class LightweightArtRetriever:
+    """Hybrid chat retriever over style, technique, and ArtEmis reference notes."""
+
+    def __init__(self, artemis_path: Path = ARTEMIS_CSV, max_artemis_rows: Optional[int] = None):
+        self.index = ChatKnowledgeIndex(artemis_path=artemis_path, max_artemis_rows=max_artemis_rows)
+        self.semantic = OptionalSemanticReranker()
+
+    def retrieve(self, profile: Dict[str, Any], query: str, limit: int = 6) -> List[RetrievedContext]:
+        candidates = self.index.search(profile, query, limit=max(limit * 6, 24))
+        candidates = self.semantic.rerank(self._semantic_query(profile, query), candidates)
+        return self._balanced(candidates, limit=limit)
 
     def _balanced(self, docs: Sequence[RetrievedContext], limit: int) -> List[RetrievedContext]:
         by_kind: Dict[str, List[RetrievedContext]] = defaultdict(list)
@@ -442,8 +543,17 @@ class LightweightArtRetriever:
             by_kind[doc.kind].append(doc)
 
         selected: List[RetrievedContext] = []
-        caps = {"style": 1, "technique": 2, "emotional-parallel": 2}
-        for kind in ("style", "technique", "emotional-parallel"):
+        caps = {
+            "style": 1,
+            "technique": 2,
+            "formal-analysis": 2,
+            "art-history": 2,
+            "artist-context": 1,
+            "museum-guide": 2,
+            "museum-record": 2,
+            "emotional-parallel": 2,
+        }
+        for kind in ("style", "museum-record", "formal-analysis", "art-history", "artist-context", "museum-guide", "technique", "emotional-parallel"):
             for doc in by_kind.get(kind, [])[:caps.get(kind, 1)]:
                 if len(selected) < limit:
                     selected.append(doc)
@@ -457,10 +567,13 @@ class LightweightArtRetriever:
         return selected
 
     def _semantic_query(self, profile: Dict[str, Any], query: str) -> str:
+        observations = profile.get("visual_observations") or {}
+        observation_text = " ".join(observations.values()) if isinstance(observations, dict) else ""
         return " ".join([
             query,
             str(profile.get("style") or ""),
             str(profile.get("context") or ""),
+            observation_text,
             "visual evidence color composition brushwork texture mood symbolism",
         ])
 
@@ -477,23 +590,31 @@ class ConversationMemory:
             self._sessions[session_id]["updated_at"] = time.time()
             return session_id
         new_id = str(uuid.uuid4())
-        self._sessions[new_id] = {"updated_at": time.time(), "turns": deque(maxlen=self.max_turns)}
+        self._sessions[new_id] = {"updated_at": time.time(), "turns": deque(maxlen=self.max_turns), "summary": ""}
         return new_id
 
     def add_turn(self, session_id: str, role: str, content: str) -> None:
         session = self._sessions.setdefault(
             session_id,
-            {"updated_at": time.time(), "turns": deque(maxlen=self.max_turns)},
+            {"updated_at": time.time(), "turns": deque(maxlen=self.max_turns), "summary": ""},
         )
         session["updated_at"] = time.time()
         turns: Deque[Dict[str, str]] = session["turns"]
         turns.append({"role": role, "content": content[:1600]})
+        if role == "user":
+            self._update_summary(session, content)
 
     def history(self, session_id: str) -> List[Dict[str, str]]:
         session = self._sessions.get(session_id)
         if not session:
             return []
         return list(session["turns"])
+
+    def summary(self, session_id: str) -> str:
+        session = self._sessions.get(session_id)
+        if not session:
+            return ""
+        return str(session.get("summary") or "")
 
     def relevant_history(self, session_id: str, query: str, max_messages: int = 6) -> List[Dict[str, str]]:
         history = self.history(session_id)
@@ -518,6 +639,18 @@ class ConversationMemory:
         for session_id in expired:
             self._sessions.pop(session_id, None)
 
+    def _update_summary(self, session: Dict[str, Any], content: str) -> None:
+        tokens = _tokenize(content)
+        useful = [tok for tok in tokens if tok in {
+            "composition", "brushwork", "symbolism", "emotion", "mood", "color",
+            "palette", "lighting", "technique", "history", "context", "meaning",
+        }]
+        if not useful:
+            return
+        existing = str(session.get("summary") or "")
+        additions = ", ".join(dict.fromkeys(useful[:4]))
+        session["summary"] = _compact_text(" ".join([existing, additions]).strip(", "), 180)
+
 
 class ArtConversationService:
     def __init__(self):
@@ -529,15 +662,36 @@ class ArtConversationService:
         if not message:
             raise ValueError("Message is required.")
 
-        profile = build_artwork_profile(analysis or {})
-        active_session = self.memory.get_or_create(session_id)
-        retrieved = self.retriever.retrieve(profile, message, limit=6)
-        history = self.memory.relevant_history(active_session, message, max_messages=6)
-        answer = self._generate_answer(message, profile, retrieved, history)
+        profile, active_session, retrieved, history, memory_summary = self._prepare_turn(message, analysis, session_id)
+        answer = self._generate_answer(message, profile, retrieved, history, memory_summary)
 
         self.memory.add_turn(active_session, "user", message)
         self.memory.add_turn(active_session, "assistant", answer)
 
+        return self._response_payload(active_session, answer, profile, retrieved, history, memory_summary)
+
+    def _prepare_turn(
+        self,
+        message: str,
+        analysis: Dict[str, Any],
+        session_id: Optional[str],
+    ) -> Tuple[Dict[str, Any], str, List[RetrievedContext], List[Dict[str, str]], str]:
+        profile = build_artwork_profile(analysis or {})
+        active_session = self.memory.get_or_create(session_id)
+        retrieved = self.retriever.retrieve(profile, message, limit=6)
+        history = self.memory.relevant_history(active_session, message, max_messages=6)
+        memory_summary = self.memory.summary(active_session)
+        return profile, active_session, retrieved, history, memory_summary
+
+    def _response_payload(
+        self,
+        active_session: str,
+        answer: str,
+        profile: Dict[str, Any],
+        retrieved: Sequence[RetrievedContext],
+        history: Sequence[Dict[str, str]],
+        memory_summary: str,
+    ) -> Dict[str, Any]:
         return {
             "session_id": active_session,
             "answer": answer,
@@ -557,30 +711,22 @@ class ArtConversationService:
                 "retrieval_sources": sorted({doc.source for doc in retrieved}),
                 "retrieval_types": sorted({doc.kind for doc in retrieved}),
                 "used_semantic_retrieval": self.retriever.semantic.enabled,
+                "retrieval_strategy": "hybrid-lexical-index",
                 "semantic_cache_hits": self.retriever.semantic.last_cache_hits,
                 "semantic_cache_misses": self.retriever.semantic.last_cache_misses,
                 "history_messages_sent": len(history),
+                "memory_summary": memory_summary,
             },
         }
 
-    def _generate_answer(
+    def _build_messages(
         self,
         message: str,
         profile: Dict[str, Any],
         retrieved: Sequence[RetrievedContext],
         history: Sequence[Dict[str, str]],
-    ) -> str:
-        api_key = os.environ.get("OPENAI_API_KEY")
-        if not api_key or api_key == "OPENAI_API_KEY_PLACEHOLDER":
-            return self._local_answer(message, profile, retrieved)
-
-        try:
-            from openai import OpenAI
-        except Exception:
-            return self._local_answer(message, profile, retrieved)
-
-        client = OpenAI(api_key=api_key)
-        model = os.environ.get("ART_CHAT_MODEL", "gpt-4o-mini")
+        memory_summary: str,
+    ) -> List[Dict[str, str]]:
         system_prompt = (
             "You are an art critic and museum educator. Stay grounded in the artwork profile "
             "and retrieved notes. Be warm, specific, and conversational. Explain visible evidence: "
@@ -588,11 +734,17 @@ class ArtConversationService:
             "Do not overclaim artist, intent, symbolism, or history. ArtEmis notes are emotional "
             "parallels only, not facts about the uploaded artwork. Do not invent specific objects, "
             "colors, or events unless they appear in the profile or notes; frame unknowns as ways to look. "
+            "When the user asks which museum records or local references you are using, identify only the "
+            "retrieved museum-record notes supplied in context. You may also use broader art-history knowledge "
+            "for helpful comparisons, but clearly separate it from retrieved museum records and do not imply "
+            "outside examples came from the local corpus. Make clear that retrieved museum records are "
+            "comparisons or context, not the uploaded artwork itself. "
             "Avoid generic reassurance and classroom filler. Keep replies under 180 words. Format for chat "
             "readability with short paragraphs, **bold** emphasis, or bullet points when useful."
         )
         context_block = json.dumps({
             "artwork_profile": profile,
+            "conversation_memory": memory_summary,
             "retrieved_notes": [
                 {
                     "title": doc.title,
@@ -610,12 +762,34 @@ class ArtConversationService:
         ]
         messages.extend(history[-6:])
         messages.append({"role": "user", "content": message})
+        return messages
+
+    def _generate_answer(
+        self,
+        message: str,
+        profile: Dict[str, Any],
+        retrieved: Sequence[RetrievedContext],
+        history: Sequence[Dict[str, str]],
+        memory_summary: str = "",
+    ) -> str:
+        api_key = os.environ.get("OPENAI_API_KEY")
+        if not api_key or api_key == "OPENAI_API_KEY_PLACEHOLDER":
+            return self._local_answer(message, profile, retrieved)
+
+        try:
+            from openai import OpenAI
+        except Exception:
+            return self._local_answer(message, profile, retrieved)
+
+        client = OpenAI(api_key=api_key)
+        model = os.environ.get("ART_CHAT_MODEL", "gpt-4o-mini")
+        messages = self._build_messages(message, profile, retrieved, history, memory_summary)
 
         try:
             response = client.chat.completions.create(
                 model=model,
                 messages=messages,
-                temperature=0.5,
+                temperature=0.35,
                 max_tokens=260,
             )
             content = response.choices[0].message.content
